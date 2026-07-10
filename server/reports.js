@@ -1,4 +1,5 @@
 const { call, listAll } = require('./bitrixClient');
+const { companyForManager } = require('./managerCompanies');
 
 function daysAgoIso(days) {
   const d = new Date();
@@ -111,7 +112,12 @@ async function getLeadsReport(days) {
     bySource[sourceId].count += 1;
 
     if (!byManager[managerId]) {
-      byManager[managerId] = { managerId, name: managerNames[managerId] || managerId, count: 0 };
+      byManager[managerId] = {
+        managerId,
+        name: managerNames[managerId] || managerId,
+        company: companyForManager(managerId),
+        count: 0,
+      };
     }
     byManager[managerId].count += 1;
 
@@ -119,6 +125,16 @@ async function getLeadsReport(days) {
     // STATUS_SEMANTIC_ID: 'F' = failure/junk (не целевой), 'S' = converted, 'P' = in progress.
     if (lead.STATUS_SEMANTIC_ID === 'F') junk += 1;
   }
+
+  const byCompany = {};
+  for (const m of Object.values(byManager)) {
+    byCompany[m.company] = (byCompany[m.company] || 0) + m.count;
+  }
+
+  const managersByCompany = Object.values(byManager).sort((a, b) => {
+    if (a.company !== b.company) return a.company.localeCompare(b.company);
+    return b.count - a.count;
+  });
 
   return {
     days,
@@ -128,7 +144,10 @@ async function getLeadsReport(days) {
     junk,
     byStatus: Object.values(byStatus).sort((a, b) => b.count - a.count),
     bySource: Object.values(bySource).sort((a, b) => b.count - a.count),
-    byManager: Object.values(byManager).sort((a, b) => b.count - a.count),
+    byManager: managersByCompany,
+    byCompany: Object.entries(byCompany)
+      .map(([company, count]) => ({ company, count }))
+      .sort((a, b) => b.count - a.count),
   };
 }
 
