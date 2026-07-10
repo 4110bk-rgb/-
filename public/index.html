@@ -9,7 +9,10 @@
 <body>
   <header>
     <h1>Отчёты Bitrix24</h1>
-    <span id="status">Загрузка…</span>
+    <div style="display: flex; align-items: baseline; gap: 16px;">
+      <span id="status">Загрузка…</span>
+      <a id="export-link" href="/api/export.xlsx" download>Скачать Excel</a>
+    </div>
   </header>
 
   <main>
