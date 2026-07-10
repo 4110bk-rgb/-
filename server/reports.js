@@ -1,4 +1,4 @@
-const { call, listAll } = require('./bitrixClient');
+const { call, listAll, userNames } = require('./bitrixClient');
 const { companyForManager, isExcludedManager } = require('./managerCompanies');
 
 function daysAgoIso(days) {
@@ -15,16 +15,6 @@ async function statusMap(entityId) {
   const rows = await listAll('crm.status.list', { filter: { ENTITY_ID: entityId } });
   const map = {};
   for (const row of rows) map[row.STATUS_ID] = row.NAME;
-  return map;
-}
-
-async function userNames(ids) {
-  if (!ids.length) return {};
-  const users = await listAll('user.get', { filter: { ID: ids } });
-  const map = {};
-  for (const u of users) {
-    map[u.ID] = [u.LAST_NAME, u.NAME].filter(Boolean).join(' ') || u.ID;
-  }
   return map;
 }
 

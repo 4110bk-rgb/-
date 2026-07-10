@@ -3,6 +3,7 @@ const path = require('path');
 const express = require('express');
 const { getDealsReport, getLeadsReport, getCallsReport } = require('./reports');
 const { buildWorkbook } = require('./exportXlsx');
+const { getDealAttachments } = require('./dealAttachments');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -42,6 +43,15 @@ app.get('/api/export.xlsx', async (req, res) => {
 
   await workbook.xlsx.write(res);
   res.end();
+});
+
+app.get('/api/deals/:id/attachments', async (req, res) => {
+  try {
+    const data = await getDealAttachments(req.params.id);
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 app.listen(PORT, () => {

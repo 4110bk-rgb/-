@@ -40,4 +40,14 @@ async function listAll(method, params = {}) {
   return items;
 }
 
-module.exports = { call, listAll };
+async function userNames(ids) {
+  if (!ids.length) return {};
+  const users = await listAll('user.get', { filter: { ID: ids } });
+  const map = {};
+  for (const u of users) {
+    map[u.ID] = [u.LAST_NAME, u.NAME].filter(Boolean).join(' ') || u.ID;
+  }
+  return map;
+}
+
+module.exports = { call, listAll, userNames };
