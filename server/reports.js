@@ -17,6 +17,16 @@ async function statusMap(entityId) {
   return map;
 }
 
+async function userNames(ids) {
+  if (!ids.length) return {};
+  const users = await listAll('user.get', { filter: { ID: ids } });
+  const map = {};
+  for (const u of users) {
+    map[u.ID] = [u.LAST_NAME, u.NAME].filter(Boolean).join(' ') || u.ID;
+  }
+  return map;
+}
+
 async function getDealsReport(days) {
   const since = daysAgoIso(days);
   const deals = await listAll('crm.deal.list', {
@@ -66,7 +76,7 @@ async function getDealsReport(days) {
 async function getLeadsReport(days) {
   const since = daysAgoIso(days);
   const leads = await listAll('crm.lead.list', {
-    select: ['ID', 'STATUS_ID', 'SOURCE_ID', 'DATE_CREATE'],
+    select: ['ID', 'STATUS_ID', 'STATUS_SEMANTIC_ID', 'SOURCE_ID', 'ASSIGNED_BY_ID', 'DATE_CREATE'],
     filter: { '>=DATE_CREATE': since },
     order: { DATE_CREATE: 'DESC' },
   });
@@ -76,13 +86,19 @@ async function getLeadsReport(days) {
     statusMap('SOURCE'),
   ]);
 
+  const managerIds = [...new Set(leads.map((l) => l.ASSIGNED_BY_ID).filter(Boolean))];
+  const managerNames = await userNames(managerIds);
+
   const byStatus = {};
   const bySource = {};
+  const byManager = {};
   let converted = 0;
+  let junk = 0;
 
   for (const lead of leads) {
     const statusId = lead.STATUS_ID || 'UNKNOWN';
     const sourceId = lead.SOURCE_ID || 'UNKNOWN';
+    const managerId = lead.ASSIGNED_BY_ID || 'UNKNOWN';
 
     if (!byStatus[statusId]) {
       byStatus[statusId] = { statusId, name: statusNames[statusId] || statusId, count: 0 };
@@ -94,15 +110,25 @@ async function getLeadsReport(days) {
     }
     bySource[sourceId].count += 1;
 
+    if (!byManager[managerId]) {
+      byManager[managerId] = { managerId, name: managerNames[managerId] || managerId, count: 0 };
+    }
+    byManager[managerId].count += 1;
+
     if (statusId === 'CONVERTED') converted += 1;
+    // STATUS_SEMANTIC_ID: 'F' = failure/junk (не целевой), 'S' = converted, 'P' = in progress.
+    if (lead.STATUS_SEMANTIC_ID === 'F') junk += 1;
   }
 
   return {
     days,
     total: leads.length,
     converted,
+    qualified: leads.length - junk,
+    junk,
     byStatus: Object.values(byStatus).sort((a, b) => b.count - a.count),
     bySource: Object.values(bySource).sort((a, b) => b.count - a.count),
+    byManager: Object.values(byManager).sort((a, b) => b.count - a.count),
   };
 }
 
