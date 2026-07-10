@@ -1,5 +1,5 @@
 const { call, listAll } = require('./bitrixClient');
-const { companyForManager } = require('./managerCompanies');
+const { companyForManager, isExcludedManager } = require('./managerCompanies');
 
 function daysAgoIso(days) {
   const d = new Date();
@@ -111,15 +111,17 @@ async function getLeadsReport(days) {
     }
     bySource[sourceId].count += 1;
 
-    if (!byManager[managerId]) {
-      byManager[managerId] = {
-        managerId,
-        name: managerNames[managerId] || managerId,
-        company: companyForManager(managerId),
-        count: 0,
-      };
+    if (!isExcludedManager(managerId)) {
+      if (!byManager[managerId]) {
+        byManager[managerId] = {
+          managerId,
+          name: managerNames[managerId] || managerId,
+          company: companyForManager(managerId),
+          count: 0,
+        };
+      }
+      byManager[managerId].count += 1;
     }
-    byManager[managerId].count += 1;
 
     if (statusId === 'CONVERTED') converted += 1;
     // STATUS_SEMANTIC_ID: 'F' = failure/junk (не целевой), 'S' = converted, 'P' = in progress.
