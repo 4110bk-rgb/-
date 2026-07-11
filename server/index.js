@@ -4,11 +4,13 @@ const express = require('express');
 const { getDealsReport, getLeadsReport, getCallsReport } = require('./reports');
 const { buildWorkbook } = require('./exportXlsx');
 const { getDealAttachments } = require('./dealAttachments');
+const { sendDealToMax } = require('./sendDealToMax');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const REPORT_DAYS = Number(process.env.REPORT_DAYS) || 30;
 
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Fetches all three reports in parallel; each failure is isolated so a
@@ -49,6 +51,26 @@ app.get('/api/deals/:id/attachments', async (req, res) => {
   try {
     const data = await getDealAttachments(req.params.id);
     res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/api/max/chats', async (req, res) => {
+  try {
+    const { bot } = require('./maxClient');
+    const chats = await bot.api.getAllChats();
+    res.json({ ok: true, data: chats });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/deals/:id/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const message = await sendDealToMax({ chatId, dealId: req.params.id });
+    res.json({ ok: true, data: message });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
