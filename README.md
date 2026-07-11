@@ -29,6 +29,10 @@
 - `server/index.js` — отдаёт статику и endpoint `GET /api/summary?days=30`.
 - `public/` — дашборд на чистом JS, опрашивает `/api/summary` каждые 15
   секунд и перерисовывает графики.
+- `server/sendLeadsReportToMax.js` — форматирует отчёт по лидам в текстовое
+  сообщение и отправляет его в чат мессенджера MAX через
+  `POST /api/leads-report/send-to-max` (кнопка «Отправить в MAX» на панели
+  «Лиды»).
 
 ### Про «реальное время»
 
