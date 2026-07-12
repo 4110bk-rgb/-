@@ -4,16 +4,17 @@
 const TECHNOLINE_MANAGER_IDS = new Set([
   '21', // Кирьянова Надежда
   '37', // Путинцева Ирина
-  '1', // Главный Администратор
   '15', // Чистозвонова Марина
 ]);
 
-// Excluded from the by-manager/by-company breakdown: heads/leadership who
-// aren't rank-and-file lead handlers, so their leads shouldn't be counted
-// against a manager's workload.
+// Excluded from the by-manager/by-company breakdown: heads/leadership and
+// routing/technical accounts, not rank-and-file lead handlers, so their
+// leads/calls shouldn't be counted against a manager's workload.
 const EXCLUDED_MANAGER_IDS = new Set([
   '17', // Чистозвонов Дмитрий — руководитель, не участвует в разбивке
   '61', // Center Call — техническая учётная запись call-центра, не менеджер
+  '1', // Главный Администратор — точка входа лидов, реальные сотрудники разбирают их себе
+  '55', // РОП РОП — то же самое, входящая линия/очередь, не сотрудник
 ]);
 
 function companyForManager(managerId) {
