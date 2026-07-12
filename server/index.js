@@ -7,6 +7,7 @@ const { getDealAttachments } = require('./dealAttachments');
 const { sendDealToMax } = require('./sendDealToMax');
 const { sendLeadsReportToMax } = require('./sendLeadsReportToMax');
 const { sendEfficiencyReportToMax } = require('./sendEfficiencyReportToMax');
+const { sendEfficiencyPdfToMax } = require('./sendEfficiencyPdfToMax');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -106,6 +107,17 @@ app.post('/api/efficiency-report/send-to-max', async (req, res) => {
     const chatId = Number(req.body.chatId);
     const days = Number(req.body.days) || REPORT_DAYS;
     const message = await sendEfficiencyReportToMax({ chatId, days });
+    res.json({ ok: true, data: message });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/efficiency-report/send-pdf-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const days = Number(req.body.days) || REPORT_DAYS;
+    const message = await sendEfficiencyPdfToMax({ chatId, days });
     res.json({ ok: true, data: message });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });

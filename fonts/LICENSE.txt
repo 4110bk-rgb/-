@@ -1,0 +1,7 @@
+DejaVu Sans (DejaVuSans.ttf, DejaVuSans-Bold.ttf)
+
+Bundled here so PDF generation doesn't depend on the host system having a
+Cyrillic-capable font installed. DejaVu fonts are released under a
+permissive license derived from the Bitstream Vera license, with no
+restriction on redistribution. Full license text:
+https://dejavu-fonts.github.io/License.html
