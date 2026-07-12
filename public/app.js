@@ -168,6 +168,8 @@ function renderLeads(result) {
     { label: `Лидов за ${d.days} дн.`, value: d.total.toLocaleString('ru-RU') },
     { label: 'Конвертировано', value: d.converted.toLocaleString('ru-RU') },
     { label: 'Конверсия', value: d.total ? `${Math.round((d.converted / d.total) * 100)}%` : '—' },
+    { label: 'Целевых', value: d.qualified.toLocaleString('ru-RU') },
+    { label: 'Нецелевых', value: d.junk.toLocaleString('ru-RU') },
   ]));
 
   const row = el('div', 'charts-row');
@@ -183,6 +185,16 @@ function renderLeads(result) {
   row.appendChild(sourceBlock);
 
   body.appendChild(row);
+
+  const companyRow = el('div', 'charts-row');
+  for (const { company, count } of d.byCompany) {
+    const managers = d.byManager.filter((m) => m.company === company);
+    const companyBlock = el('div', 'chart-block');
+    companyBlock.appendChild(el('h3', null, `${company} — по менеджерам (${count.toLocaleString('ru-RU')})`));
+    companyBlock.appendChild(barList(managers.map((m) => ({ label: m.name, value: m.count })), 'var(--series-3)'));
+    companyRow.appendChild(companyBlock);
+  }
+  body.appendChild(companyRow);
 }
 
 function renderCalls(result) {
