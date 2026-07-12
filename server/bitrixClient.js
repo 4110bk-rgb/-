@@ -5,21 +5,45 @@ if (!WEBHOOK_URL) {
 }
 
 const BASE_URL = WEBHOOK_URL.endsWith('/') ? WEBHOOK_URL : `${WEBHOOK_URL}/`;
-const PAGE_SIZE = 50;
-const MAX_PAGES = 40; // safety cap: up to 2000 records per report
+const MAX_PAGES = 600; // safety cap: up to 30,000 records per report (a year of calls can be 10,000+)
+
+const MAX_RETRIES = 4;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function call(method, params = {}) {
-  const res = await fetch(`${BASE_URL}${method}.json`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(`${BASE_URL}${method}.json`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
 
-  const data = await res.json();
-  if (data.error) {
-    throw new Error(`Bitrix24 ${method} error: ${data.error} - ${data.error_description || ''}`);
+      const data = await res.json();
+      // QUERY_LIMIT_EXCEEDED means the webhook hit Bitrix24's rate limit — worth
+      // retrying with backoff; other Bitrix errors (bad params, missing scope) won't
+      // resolve themselves, so fail immediately.
+      if (data.error === 'QUERY_LIMIT_EXCEEDED' && attempt < MAX_RETRIES) {
+        await sleep(500 * 2 ** attempt);
+        continue;
+      }
+      if (data.error) {
+        throw new Error(`Bitrix24 ${method} error: ${data.error} - ${data.error_description || ''}`);
+      }
+      return data;
+    } catch (err) {
+      // Transient network failures (the sandboxed egress path can drop long-running
+      // connections) are retried; anything else (including the Bitrix error thrown above) is not.
+      if (err.message.startsWith('Bitrix24 ') || attempt === MAX_RETRIES) throw err;
+      lastErr = err;
+      await sleep(500 * 2 ** attempt);
+    }
   }
-  return data;
+  throw lastErr;
 }
 
 // Paginates a Bitrix24 list method (crm.deal.list, crm.lead.list, voximplant.statistic.get, ...)
