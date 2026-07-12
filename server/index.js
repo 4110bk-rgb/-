@@ -5,6 +5,7 @@ const { getDealsReport, getLeadsReport, getCallsReport } = require('./reports');
 const { buildWorkbook } = require('./exportXlsx');
 const { getDealAttachments } = require('./dealAttachments');
 const { sendDealToMax } = require('./sendDealToMax');
+const { sendLeadsReportToMax } = require('./sendLeadsReportToMax');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -70,6 +71,17 @@ app.post('/api/deals/:id/send-to-max', async (req, res) => {
   try {
     const chatId = Number(req.body.chatId);
     const message = await sendDealToMax({ chatId, dealId: req.params.id });
+    res.json({ ok: true, data: message });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/leads-report/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const days = Number(req.body.days) || REPORT_DAYS;
+    const message = await sendLeadsReportToMax({ chatId, days });
     res.json({ ok: true, data: message });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
