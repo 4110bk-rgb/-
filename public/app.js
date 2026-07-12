@@ -131,9 +131,11 @@ function lineChart(points, color) {
   return svg;
 }
 
-// Per-manager funnel: leads -> qualified -> converted -> deal won. A real
-// table, not bars — too many co-varying metrics per row for one chart.
-function conversionTable(byManager) {
+// Per-manager scorecard: leads -> qualified -> converted -> deal won, plus
+// call activity alongside it. A real table, not bars — too many
+// co-varying metrics per row for one chart.
+function efficiencyTable(byManager) {
+  const columns = 9;
   const table = el('table', 'conversion-table');
   const thead = el('thead', null, `
     <tr>
@@ -144,6 +146,8 @@ function conversionTable(byManager) {
       <th>Сделок</th>
       <th>Побед</th>
       <th>Сумма выигранных</th>
+      <th>Звонков</th>
+      <th>% пропущенных</th>
     </tr>`);
   table.appendChild(thead);
 
@@ -155,7 +159,7 @@ function conversionTable(byManager) {
       currentCompany = m.company;
       const groupRow = el('tr', 'company-row');
       const cell = el('td', null, currentCompany);
-      cell.colSpan = 7;
+      cell.colSpan = columns;
       groupRow.appendChild(cell);
       tbody.appendChild(groupRow);
     }
@@ -168,7 +172,9 @@ function conversionTable(byManager) {
       <td>${m.leadConversionRate}%</td>
       <td>${m.dealsTotal.toLocaleString('ru-RU')}</td>
       <td>${m.dealsWon.toLocaleString('ru-RU')} / ${m.dealsLost.toLocaleString('ru-RU')} (${m.dealWinRate}%)</td>
-      <td>${formatCompact(m.wonSum)}</td>`;
+      <td>${formatCompact(m.wonSum)}</td>
+      <td>${m.callsTotal.toLocaleString('ru-RU')}</td>
+      <td>${m.missedCallRate}%</td>`;
     tbody.appendChild(row);
   }
 
@@ -176,8 +182,8 @@ function conversionTable(byManager) {
   return table;
 }
 
-function renderConversion(result) {
-  const body = document.getElementById('conversion-body');
+function renderEfficiency(result) {
+  const body = document.getElementById('efficiency-body');
   body.innerHTML = '';
 
   if (!result.ok) {
@@ -185,7 +191,7 @@ function renderConversion(result) {
     return;
   }
 
-  body.appendChild(conversionTable(result.data.byManager));
+  body.appendChild(efficiencyTable(result.data.byManager));
 }
 
 function renderDeals(result) {
@@ -275,7 +281,7 @@ async function refresh() {
     renderDeals(data.deals);
     renderLeads(data.leads);
     renderCalls(data.calls);
-    renderConversion(data.conversion);
+    renderEfficiency(data.efficiency);
 
     statusEl.textContent = `Обновлено: ${new Date(data.generatedAt).toLocaleTimeString('ru-RU')}`;
     statusEl.classList.remove('stale');

@@ -1,7 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
-const { getDealsReport, getLeadsReport, getCallsReport, buildConversionReport } = require('./reports');
+const { getDealsReport, getLeadsReport, getCallsReport, buildManagerEfficiencyReport } = require('./reports');
 const { buildWorkbook } = require('./exportXlsx');
 const { getDealAttachments } = require('./dealAttachments');
 const { sendDealToMax } = require('./sendDealToMax');
@@ -28,13 +28,17 @@ async function fetchAllReports(days) {
 
   const dealsResult = pick(deals);
   const leadsResult = pick(leads);
+  const callsResult = pick(calls);
 
-  const conversion =
+  const efficiency =
     dealsResult.ok && leadsResult.ok
-      ? { ok: true, data: buildConversionReport(days, leadsResult.data, dealsResult.data) }
+      ? {
+          ok: true,
+          data: buildManagerEfficiencyReport(days, leadsResult.data, dealsResult.data, callsResult.ok ? callsResult.data : null),
+        }
       : { ok: false, error: 'Требуются отчёты по лидам и сделкам' };
 
-  return { deals: dealsResult, leads: leadsResult, calls: pick(calls), conversion };
+  return { deals: dealsResult, leads: leadsResult, calls: callsResult, efficiency };
 }
 
 app.get('/api/summary', async (req, res) => {

@@ -190,11 +190,15 @@ async function getCallsReport(days) {
     order: { CALL_START_DATE: 'DESC' },
   });
 
+  const managerIds = [...new Set(calls.map((c) => c.PORTAL_USER_ID).filter(Boolean))];
+  const managerNames = await userNames(managerIds);
+
   let totalDuration = 0;
   let missed = 0;
   let incoming = 0;
   let outgoing = 0;
   const byDay = {};
+  const byManager = {};
 
   for (const c of calls) {
     const duration = Number(c.CALL_DURATION) || 0;
@@ -205,15 +209,38 @@ async function getCallsReport(days) {
     else outgoing += 1;
 
     const failed = String(c.CALL_FAILED_CODE) !== '200';
-    if (isIncoming && (duration === 0 || failed)) missed += 1;
+    const isMissed = isIncoming && (duration === 0 || failed);
+    if (isMissed) missed += 1;
 
     const day = dateKey(c.CALL_START_DATE);
     byDay[day] = (byDay[day] || 0) + 1;
+
+    const managerId = c.PORTAL_USER_ID || 'UNKNOWN';
+    if (!isExcludedManager(managerId)) {
+      if (!byManager[managerId]) {
+        byManager[managerId] = {
+          managerId,
+          name: managerNames[managerId] || managerId,
+          company: companyForManager(managerId),
+          total: 0,
+          missed: 0,
+          totalDuration: 0,
+        };
+      }
+      byManager[managerId].total += 1;
+      byManager[managerId].totalDuration += duration;
+      if (isMissed) byManager[managerId].missed += 1;
+    }
   }
 
   const byDaySorted = Object.entries(byDay)
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([day, count]) => ({ day, count }));
+
+  const managersByCompany = Object.values(byManager).sort((a, b) => {
+    if (a.company !== b.company) return a.company.localeCompare(b.company);
+    return b.total - a.total;
+  });
 
   return {
     days,
@@ -224,6 +251,7 @@ async function getCallsReport(days) {
     incoming,
     outgoing,
     byDay: byDaySorted,
+    byManager: managersByCompany,
   };
 }
 
@@ -231,14 +259,15 @@ function pct(numerator, denominator) {
   return denominator ? Math.round((numerator / denominator) * 1000) / 10 : 0;
 }
 
-// Merges the leads and deals manager breakdowns into one per-manager funnel:
-// leads in -> qualified -> converted to a deal -> deal won, so a manager's
-// whole conversion path is visible in one row instead of two separate reports.
-// Takes already-fetched leads/deals reports rather than fetching its own
-// copies — callers that already have both (e.g. the dashboard summary,
-// which fetches every report in parallel) should pass them in to avoid
-// doubling up on Bitrix24 API calls.
-function buildConversionReport(days, leads, deals) {
+// Merges the leads, deals and calls manager breakdowns into one per-manager
+// scorecard: leads in -> qualified -> converted to a deal -> deal won, plus
+// call activity (volume, missed rate, average duration) alongside it — the
+// full picture of a manager's efficiency in one row instead of three
+// separate reports. Takes already-fetched reports rather than fetching its
+// own copies — callers that already have all three (e.g. the dashboard
+// summary, which fetches every report in parallel) should pass them in to
+// avoid doubling up on Bitrix24 API calls.
+function buildManagerEfficiencyReport(days, leads, deals, calls) {
   const managers = {};
   const ensure = (m) => {
     if (!managers[m.managerId]) {
@@ -264,6 +293,16 @@ function buildConversionReport(days, leads, deals) {
     });
   }
 
+  if (calls) {
+    for (const m of calls.byManager) {
+      Object.assign(ensure(m), {
+        callsTotal: m.total,
+        callsMissed: m.missed,
+        callsDuration: m.totalDuration,
+      });
+    }
+  }
+
   const byManager = Object.values(managers)
     .map((m) => {
       const leadsTotal = m.leadsTotal || 0;
@@ -271,6 +310,9 @@ function buildConversionReport(days, leads, deals) {
       const leadsConverted = m.leadsConverted || 0;
       const dealsWon = m.dealsWon || 0;
       const dealsLost = m.dealsLost || 0;
+      const callsTotal = m.callsTotal || 0;
+      const callsMissed = m.callsMissed || 0;
+      const callsDuration = m.callsDuration || 0;
 
       return {
         ...m,
@@ -281,9 +323,13 @@ function buildConversionReport(days, leads, deals) {
         dealsWon,
         dealsLost,
         wonSum: m.wonSum || 0,
+        callsTotal,
+        callsMissed,
+        avgCallDuration: callsTotal ? Math.round(callsDuration / callsTotal) : 0,
         leadQualifiedRate: pct(leadsQualified, leadsTotal),
         leadConversionRate: pct(leadsConverted, leadsQualified),
         dealWinRate: pct(dealsWon, dealsWon + dealsLost),
+        missedCallRate: pct(callsMissed, callsTotal),
       };
     })
     .sort((a, b) => {
@@ -294,9 +340,15 @@ function buildConversionReport(days, leads, deals) {
   return { days, byManager };
 }
 
-async function getConversionReport(days) {
-  const [leads, deals] = await Promise.all([getLeadsReport(days), getDealsReport(days)]);
-  return buildConversionReport(days, leads, deals);
+async function getManagerEfficiencyReport(days) {
+  const [leads, deals, calls] = await Promise.all([getLeadsReport(days), getDealsReport(days), getCallsReport(days)]);
+  return buildManagerEfficiencyReport(days, leads, deals, calls);
 }
 
-module.exports = { getDealsReport, getLeadsReport, getCallsReport, getConversionReport, buildConversionReport };
+module.exports = {
+  getDealsReport,
+  getLeadsReport,
+  getCallsReport,
+  getManagerEfficiencyReport,
+  buildManagerEfficiencyReport,
+};

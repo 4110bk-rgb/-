@@ -96,9 +96,9 @@ function addLeadsSheet(workbook, leads) {
   }
 }
 
-function addConversionSheet(workbook, conversion) {
-  if (!conversion.ok) return;
-  const sheet = workbook.addWorksheet('Конверсия по менеджерам');
+function addEfficiencySheet(workbook, efficiency) {
+  if (!efficiency.ok) return;
+  const sheet = workbook.addWorksheet('Эффективность менеджеров');
   sheet.columns = [
     { header: 'Компания', key: 'company', width: 14 },
     { header: 'Менеджер', key: 'name', width: 24 },
@@ -112,9 +112,12 @@ function addConversionSheet(workbook, conversion) {
     { header: 'Проиграно', key: 'dealsLost', width: 10 },
     { header: '% побед в сделках', key: 'dealWinRate', width: 16 },
     { header: 'Сумма выигранных', key: 'wonSum', width: 18 },
+    { header: 'Звонков', key: 'callsTotal', width: 10 },
+    { header: '% пропущенных', key: 'missedCallRate', width: 14 },
+    { header: 'Средняя длительность звонка, сек', key: 'avgCallDuration', width: 20 },
   ];
   styleHeaderRow(sheet.getRow(1));
-  for (const m of conversion.data.byManager) {
+  for (const m of efficiency.data.byManager) {
     sheet.addRow({
       company: m.company,
       name: m.name,
@@ -128,6 +131,9 @@ function addConversionSheet(workbook, conversion) {
       dealsLost: m.dealsLost,
       dealWinRate: `${m.dealWinRate}%`,
       wonSum: m.wonSum,
+      callsTotal: m.callsTotal,
+      missedCallRate: `${m.missedCallRate}%`,
+      avgCallDuration: m.avgCallDuration,
     });
   }
 }
@@ -143,13 +149,13 @@ function addCallsSheet(workbook, calls) {
   for (const d of calls.data.byDay) sheet.addRow({ day: d.day, count: d.count });
 }
 
-async function buildWorkbook({ deals, leads, calls, conversion, days }) {
+async function buildWorkbook({ deals, leads, calls, efficiency, days }) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Bitrix24 Reports Dashboard';
   workbook.created = new Date();
 
   addSummarySheet(workbook, { deals, leads, calls, days });
-  addConversionSheet(workbook, conversion);
+  addEfficiencySheet(workbook, efficiency);
   addDealsSheet(workbook, deals);
   addLeadsSheet(workbook, leads);
   addCallsSheet(workbook, calls);
