@@ -208,6 +208,35 @@ function renderCalls(result) {
   body.appendChild(chartBlock);
 }
 
+async function sendLeadsReportToMax() {
+  const chatId = window.prompt('ID чата MAX, куда отправить отчёт по лидам:');
+  if (!chatId) return;
+
+  const button = document.getElementById('send-leads-to-max');
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Отправка…';
+
+  try {
+    const res = await fetch('/api/leads-report/send-to-max', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: Number(chatId) }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    button.textContent = 'Отправлено ✓';
+  } catch (err) {
+    window.alert(`Не удалось отправить отчёт: ${err.message}`);
+    button.textContent = originalLabel;
+  } finally {
+    button.disabled = false;
+    setTimeout(() => { button.textContent = originalLabel; }, 3000);
+  }
+}
+
+document.getElementById('send-leads-to-max').addEventListener('click', sendLeadsReportToMax);
+
 async function refresh() {
   const statusEl = document.getElementById('status');
   try {
