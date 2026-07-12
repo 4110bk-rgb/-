@@ -1,7 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
-const { getDealsReport, getLeadsReport, getCallsReport } = require('./reports');
+const { getDealsReport, getLeadsReport, getCallsReport, buildConversionReport } = require('./reports');
 const { buildWorkbook } = require('./exportXlsx');
 const { getDealAttachments } = require('./dealAttachments');
 const { sendDealToMax } = require('./sendDealToMax');
@@ -26,7 +26,15 @@ async function fetchAllReports(days) {
   const pick = (settled) =>
     settled.status === 'fulfilled' ? { ok: true, data: settled.value } : { ok: false, error: settled.reason.message };
 
-  return { deals: pick(deals), leads: pick(leads), calls: pick(calls) };
+  const dealsResult = pick(deals);
+  const leadsResult = pick(leads);
+
+  const conversion =
+    dealsResult.ok && leadsResult.ok
+      ? { ok: true, data: buildConversionReport(days, leadsResult.data, dealsResult.data) }
+      : { ok: false, error: 'Требуются отчёты по лидам и сделкам' };
+
+  return { deals: dealsResult, leads: leadsResult, calls: pick(calls), conversion };
 }
 
 app.get('/api/summary', async (req, res) => {

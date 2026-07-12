@@ -158,6 +158,39 @@ section.panel h2 {
   fill: var(--text-secondary);
 }
 
+.conversion-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.conversion-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--gridline);
+}
+
+.conversion-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--gridline);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.conversion-table td:first-child {
+  font-variant-numeric: proportional-nums;
+}
+
+.conversion-table .company-row td {
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--page);
+  padding-top: 10px;
+}
+
 .tooltip {
   position: absolute;
   pointer-events: none;

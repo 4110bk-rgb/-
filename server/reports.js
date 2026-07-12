@@ -21,7 +21,7 @@ async function statusMap(entityId) {
 async function getDealsReport(days) {
   const since = daysAgoIso(days);
   const deals = await listAll('crm.deal.list', {
-    select: ['ID', 'STAGE_ID', 'CATEGORY_ID', 'OPPORTUNITY', 'CURRENCY_ID', 'DATE_CREATE', 'CLOSED'],
+    select: ['ID', 'STAGE_ID', 'CATEGORY_ID', 'OPPORTUNITY', 'CURRENCY_ID', 'ASSIGNED_BY_ID', 'DATE_CREATE', 'CLOSED'],
     filter: { '>=DATE_CREATE': since },
     order: { DATE_CREATE: 'DESC' },
   });
@@ -33,10 +33,14 @@ async function getDealsReport(days) {
     Object.assign(stageNames, await statusMap(entityId));
   }
 
+  const managerIds = [...new Set(deals.map((d) => d.ASSIGNED_BY_ID).filter(Boolean))];
+  const managerNames = await userNames(managerIds);
+
   let totalSum = 0;
   let wonCount = 0;
   let lostCount = 0;
   const byStage = {};
+  const byManager = {};
 
   for (const deal of deals) {
     const sum = Number(deal.OPPORTUNITY) || 0;
@@ -49,9 +53,37 @@ async function getDealsReport(days) {
     byStage[stageId].count += 1;
     byStage[stageId].sum += sum;
 
-    if (/WON/i.test(stageId)) wonCount += 1;
-    if (/LOSE|LOST/i.test(stageId)) lostCount += 1;
+    const isWon = /WON/i.test(stageId);
+    const isLost = /LOSE|LOST/i.test(stageId);
+    if (isWon) wonCount += 1;
+    if (isLost) lostCount += 1;
+
+    const managerId = deal.ASSIGNED_BY_ID || 'UNKNOWN';
+    if (!isExcludedManager(managerId)) {
+      if (!byManager[managerId]) {
+        byManager[managerId] = {
+          managerId,
+          name: managerNames[managerId] || managerId,
+          company: companyForManager(managerId),
+          total: 0,
+          won: 0,
+          lost: 0,
+          wonSum: 0,
+        };
+      }
+      byManager[managerId].total += 1;
+      if (isWon) {
+        byManager[managerId].won += 1;
+        byManager[managerId].wonSum += sum;
+      }
+      if (isLost) byManager[managerId].lost += 1;
+    }
   }
+
+  const managersByCompany = Object.values(byManager).sort((a, b) => {
+    if (a.company !== b.company) return a.company.localeCompare(b.company);
+    return b.total - a.total;
+  });
 
   return {
     days,
@@ -61,6 +93,7 @@ async function getDealsReport(days) {
     wonCount,
     lostCount,
     byStage: Object.values(byStage).sort((a, b) => b.count - a.count),
+    byManager: managersByCompany,
   };
 }
 
@@ -101,6 +134,10 @@ async function getLeadsReport(days) {
     }
     bySource[sourceId].count += 1;
 
+    const isConverted = statusId === 'CONVERTED';
+    // STATUS_SEMANTIC_ID: 'F' = failure/junk (не целевой), 'S' = converted, 'P' = in progress.
+    const isJunk = lead.STATUS_SEMANTIC_ID === 'F';
+
     if (!isExcludedManager(managerId)) {
       if (!byManager[managerId]) {
         byManager[managerId] = {
@@ -108,14 +145,17 @@ async function getLeadsReport(days) {
           name: managerNames[managerId] || managerId,
           company: companyForManager(managerId),
           count: 0,
+          qualified: 0,
+          converted: 0,
         };
       }
       byManager[managerId].count += 1;
+      if (!isJunk) byManager[managerId].qualified += 1;
+      if (isConverted) byManager[managerId].converted += 1;
     }
 
-    if (statusId === 'CONVERTED') converted += 1;
-    // STATUS_SEMANTIC_ID: 'F' = failure/junk (не целевой), 'S' = converted, 'P' = in progress.
-    if (lead.STATUS_SEMANTIC_ID === 'F') junk += 1;
+    if (isConverted) converted += 1;
+    if (isJunk) junk += 1;
   }
 
   const byCompany = {};
@@ -187,4 +227,76 @@ async function getCallsReport(days) {
   };
 }
 
-module.exports = { getDealsReport, getLeadsReport, getCallsReport };
+function pct(numerator, denominator) {
+  return denominator ? Math.round((numerator / denominator) * 1000) / 10 : 0;
+}
+
+// Merges the leads and deals manager breakdowns into one per-manager funnel:
+// leads in -> qualified -> converted to a deal -> deal won, so a manager's
+// whole conversion path is visible in one row instead of two separate reports.
+// Takes already-fetched leads/deals reports rather than fetching its own
+// copies — callers that already have both (e.g. the dashboard summary,
+// which fetches every report in parallel) should pass them in to avoid
+// doubling up on Bitrix24 API calls.
+function buildConversionReport(days, leads, deals) {
+  const managers = {};
+  const ensure = (m) => {
+    if (!managers[m.managerId]) {
+      managers[m.managerId] = { managerId: m.managerId, name: m.name, company: m.company };
+    }
+    return managers[m.managerId];
+  };
+
+  for (const m of leads.byManager) {
+    Object.assign(ensure(m), {
+      leadsTotal: m.count,
+      leadsQualified: m.qualified,
+      leadsConverted: m.converted,
+    });
+  }
+
+  for (const m of deals.byManager) {
+    Object.assign(ensure(m), {
+      dealsTotal: m.total,
+      dealsWon: m.won,
+      dealsLost: m.lost,
+      wonSum: Math.round(m.wonSum),
+    });
+  }
+
+  const byManager = Object.values(managers)
+    .map((m) => {
+      const leadsTotal = m.leadsTotal || 0;
+      const leadsQualified = m.leadsQualified || 0;
+      const leadsConverted = m.leadsConverted || 0;
+      const dealsWon = m.dealsWon || 0;
+      const dealsLost = m.dealsLost || 0;
+
+      return {
+        ...m,
+        leadsTotal,
+        leadsQualified,
+        leadsConverted,
+        dealsTotal: m.dealsTotal || 0,
+        dealsWon,
+        dealsLost,
+        wonSum: m.wonSum || 0,
+        leadQualifiedRate: pct(leadsQualified, leadsTotal),
+        leadConversionRate: pct(leadsConverted, leadsQualified),
+        dealWinRate: pct(dealsWon, dealsWon + dealsLost),
+      };
+    })
+    .sort((a, b) => {
+      if (a.company !== b.company) return a.company.localeCompare(b.company);
+      return b.leadsTotal - a.leadsTotal;
+    });
+
+  return { days, byManager };
+}
+
+async function getConversionReport(days) {
+  const [leads, deals] = await Promise.all([getLeadsReport(days), getDealsReport(days)]);
+  return buildConversionReport(days, leads, deals);
+}
+
+module.exports = { getDealsReport, getLeadsReport, getCallsReport, getConversionReport, buildConversionReport };

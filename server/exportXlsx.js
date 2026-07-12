@@ -96,6 +96,42 @@ function addLeadsSheet(workbook, leads) {
   }
 }
 
+function addConversionSheet(workbook, conversion) {
+  if (!conversion.ok) return;
+  const sheet = workbook.addWorksheet('Конверсия по менеджерам');
+  sheet.columns = [
+    { header: 'Компания', key: 'company', width: 14 },
+    { header: 'Менеджер', key: 'name', width: 24 },
+    { header: 'Лидов', key: 'leadsTotal', width: 10 },
+    { header: 'Целевых', key: 'leadsQualified', width: 10 },
+    { header: '% целевых', key: 'leadQualifiedRate', width: 12 },
+    { header: 'Конвертировано', key: 'leadsConverted', width: 16 },
+    { header: '% конверсии лида', key: 'leadConversionRate', width: 16 },
+    { header: 'Сделок', key: 'dealsTotal', width: 10 },
+    { header: 'Выиграно', key: 'dealsWon', width: 10 },
+    { header: 'Проиграно', key: 'dealsLost', width: 10 },
+    { header: '% побед в сделках', key: 'dealWinRate', width: 16 },
+    { header: 'Сумма выигранных', key: 'wonSum', width: 18 },
+  ];
+  styleHeaderRow(sheet.getRow(1));
+  for (const m of conversion.data.byManager) {
+    sheet.addRow({
+      company: m.company,
+      name: m.name,
+      leadsTotal: m.leadsTotal,
+      leadsQualified: m.leadsQualified,
+      leadQualifiedRate: `${m.leadQualifiedRate}%`,
+      leadsConverted: m.leadsConverted,
+      leadConversionRate: `${m.leadConversionRate}%`,
+      dealsTotal: m.dealsTotal,
+      dealsWon: m.dealsWon,
+      dealsLost: m.dealsLost,
+      dealWinRate: `${m.dealWinRate}%`,
+      wonSum: m.wonSum,
+    });
+  }
+}
+
 function addCallsSheet(workbook, calls) {
   if (!calls.ok) return;
   const sheet = workbook.addWorksheet('Звонки по дням');
@@ -107,12 +143,13 @@ function addCallsSheet(workbook, calls) {
   for (const d of calls.data.byDay) sheet.addRow({ day: d.day, count: d.count });
 }
 
-async function buildWorkbook({ deals, leads, calls, days }) {
+async function buildWorkbook({ deals, leads, calls, conversion, days }) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Bitrix24 Reports Dashboard';
   workbook.created = new Date();
 
   addSummarySheet(workbook, { deals, leads, calls, days });
+  addConversionSheet(workbook, conversion);
   addDealsSheet(workbook, deals);
   addLeadsSheet(workbook, leads);
   addCallsSheet(workbook, calls);

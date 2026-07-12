@@ -131,6 +131,63 @@ function lineChart(points, color) {
   return svg;
 }
 
+// Per-manager funnel: leads -> qualified -> converted -> deal won. A real
+// table, not bars — too many co-varying metrics per row for one chart.
+function conversionTable(byManager) {
+  const table = el('table', 'conversion-table');
+  const thead = el('thead', null, `
+    <tr>
+      <th>Менеджер</th>
+      <th>Лидов</th>
+      <th>Целевых</th>
+      <th>Конверсия лида</th>
+      <th>Сделок</th>
+      <th>Побед</th>
+      <th>Сумма выигранных</th>
+    </tr>`);
+  table.appendChild(thead);
+
+  const tbody = el('tbody');
+  let currentCompany = null;
+
+  for (const m of byManager) {
+    if (m.company !== currentCompany) {
+      currentCompany = m.company;
+      const groupRow = el('tr', 'company-row');
+      const cell = el('td', null, currentCompany);
+      cell.colSpan = 7;
+      groupRow.appendChild(cell);
+      tbody.appendChild(groupRow);
+    }
+
+    const row = el('tr');
+    row.innerHTML = `
+      <td>${m.name}</td>
+      <td>${m.leadsTotal.toLocaleString('ru-RU')}</td>
+      <td>${m.leadsQualified.toLocaleString('ru-RU')} (${m.leadQualifiedRate}%)</td>
+      <td>${m.leadConversionRate}%</td>
+      <td>${m.dealsTotal.toLocaleString('ru-RU')}</td>
+      <td>${m.dealsWon.toLocaleString('ru-RU')} / ${m.dealsLost.toLocaleString('ru-RU')} (${m.dealWinRate}%)</td>
+      <td>${formatCompact(m.wonSum)}</td>`;
+    tbody.appendChild(row);
+  }
+
+  table.appendChild(tbody);
+  return table;
+}
+
+function renderConversion(result) {
+  const body = document.getElementById('conversion-body');
+  body.innerHTML = '';
+
+  if (!result.ok) {
+    body.appendChild(el('div', 'panel-error', `Не удалось получить данные: ${result.error}`));
+    return;
+  }
+
+  body.appendChild(conversionTable(result.data.byManager));
+}
+
 function renderDeals(result) {
   const body = document.getElementById('deals-body');
   body.innerHTML = '';
@@ -218,6 +275,7 @@ async function refresh() {
     renderDeals(data.deals);
     renderLeads(data.leads);
     renderCalls(data.calls);
+    renderConversion(data.conversion);
 
     statusEl.textContent = `Обновлено: ${new Date(data.generatedAt).toLocaleTimeString('ru-RU')}`;
     statusEl.classList.remove('stale');
