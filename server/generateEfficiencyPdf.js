@@ -97,6 +97,15 @@ async function generateEfficiencyPdf(days) {
   doc.moveTo(PAGE_MARGIN, doc.y).lineTo(doc.page.width - PAGE_MARGIN, doc.y).strokeColor(GRIDLINE).stroke();
   doc.moveDown(0.8);
 
+  doc.fillColor(MUTED).fontSize(9).text(
+    'Важно: этап «Выиграно» — это все выигранные сделки менеджера за период, включая сделки, ' +
+      'созданные не из лида (визит в офис, звонок на личный номер, повторный клиент и т.п.). ' +
+      'Большинство сделок в этой воронке приходят не из лидов, показанных выше, поэтому прямой связи ' +
+      '«Конвертировано → Выиграно» может не быть.',
+    { width: doc.page.width - PAGE_MARGIN * 2 },
+  );
+  doc.moveDown(0.8);
+
   let currentCompany = null;
   const funnelWidth = doc.page.width - PAGE_MARGIN * 2 - 20;
 
