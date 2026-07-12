@@ -13,6 +13,7 @@ const TECHNOLINE_MANAGER_IDS = new Set([
 // against a manager's workload.
 const EXCLUDED_MANAGER_IDS = new Set([
   '17', // Чистозвонов Дмитрий — руководитель, не участвует в разбивке
+  '61', // Center Call — техническая учётная запись call-центра, не менеджер
 ]);
 
 function companyForManager(managerId) {
