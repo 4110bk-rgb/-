@@ -291,5 +291,32 @@ async function refresh() {
   }
 }
 
+async function saveSnapshotToDisk() {
+  const btn = document.getElementById('save-to-disk-btn');
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Сохранение…';
+  try {
+    const res = await fetch('/api/health-snapshot/save-to-disk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    btn.textContent = 'Сохранено ✓';
+  } catch (err) {
+    btn.textContent = 'Ошибка сохранения';
+    console.error(err);
+  } finally {
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 3000);
+  }
+}
+
+document.getElementById('save-to-disk-btn').addEventListener('click', saveSnapshotToDisk);
+
 refresh();
 setInterval(refresh, REFRESH_MS);
