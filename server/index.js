@@ -8,7 +8,6 @@ const { sendDealToMax } = require('./sendDealToMax');
 const { sendLeadsReportToMax } = require('./sendLeadsReportToMax');
 const { sendEfficiencyReportToMax } = require('./sendEfficiencyReportToMax');
 const { sendEfficiencyPdfToMax } = require('./sendEfficiencyPdfToMax');
-const { saveHealthSnapshotToYandexDisk } = require('./saveHealthSnapshotToYandexDisk');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -120,17 +119,6 @@ app.post('/api/efficiency-report/send-pdf-to-max', async (req, res) => {
     const days = Number(req.body.days) || REPORT_DAYS;
     const message = await sendEfficiencyPdfToMax({ chatId, days });
     res.json({ ok: true, data: message });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-app.post('/api/health-snapshot/save-to-disk', async (req, res) => {
-  try {
-    const days = Number(req.body.days) || REPORT_DAYS;
-    const reports = await fetchAllReports(days);
-    const diskPath = await saveHealthSnapshotToYandexDisk({ days, reports });
-    res.json({ ok: true, data: { diskPath } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

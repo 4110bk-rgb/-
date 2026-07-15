@@ -71,20 +71,6 @@ header h1 { font-size: 18px; margin: 0; font-weight: 600; }
 
 #export-link:hover { text-decoration: underline; }
 
-#save-to-disk-btn {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--series-1);
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-
-#save-to-disk-btn:hover { background: var(--page); }
-#save-to-disk-btn:disabled { cursor: default; opacity: 0.7; }
-
 main {
   padding: 24px 28px 60px;
   display: flex;
