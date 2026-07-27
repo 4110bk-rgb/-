@@ -21,7 +21,7 @@ async function statusMap(entityId) {
 async function getDealsReport(days) {
   const since = daysAgoIso(days);
   const deals = await listAll('crm.deal.list', {
-    select: ['ID', 'STAGE_ID', 'CATEGORY_ID', 'OPPORTUNITY', 'CURRENCY_ID', 'ASSIGNED_BY_ID', 'DATE_CREATE', 'CLOSED'],
+    select: ['ID', 'STAGE_ID', 'CATEGORY_ID', 'OPPORTUNITY', 'CURRENCY_ID', 'ASSIGNED_BY_ID', 'DATE_CREATE', 'CLOSEDATE', 'CLOSED'],
     filter: { '>=DATE_CREATE': since },
     order: { DATE_CREATE: 'DESC' },
   });
@@ -69,21 +69,36 @@ async function getDealsReport(days) {
           won: 0,
           lost: 0,
           wonSum: 0,
+          wonDurationSum: 0,
+          wonDurationCount: 0,
         };
       }
       byManager[managerId].total += 1;
       if (isWon) {
         byManager[managerId].won += 1;
         byManager[managerId].wonSum += sum;
+        if (deal.CLOSEDATE) {
+          const durationDays = (new Date(deal.CLOSEDATE) - new Date(deal.DATE_CREATE)) / 86400000;
+          if (durationDays >= 0) {
+            byManager[managerId].wonDurationSum += durationDays;
+            byManager[managerId].wonDurationCount += 1;
+          }
+        }
       }
       if (isLost) byManager[managerId].lost += 1;
     }
   }
 
-  const managersByCompany = Object.values(byManager).sort((a, b) => {
-    if (a.company !== b.company) return a.company.localeCompare(b.company);
-    return b.total - a.total;
-  });
+  const managersByCompany = Object.values(byManager)
+    .map((m) => ({
+      ...m,
+      avgCheck: m.won ? Math.round(m.wonSum / m.won) : 0,
+      avgDealDurationDays: m.wonDurationCount ? Math.round((m.wonDurationSum / m.wonDurationCount) * 10) / 10 : 0,
+    }))
+    .sort((a, b) => {
+      if (a.company !== b.company) return a.company.localeCompare(b.company);
+      return b.total - a.total;
+    });
 
   return {
     days,
@@ -290,6 +305,8 @@ function buildManagerEfficiencyReport(days, leads, deals, calls) {
       dealsWon: m.won,
       dealsLost: m.lost,
       wonSum: Math.round(m.wonSum),
+      avgCheck: m.avgCheck,
+      avgDealDurationDays: m.avgDealDurationDays,
     });
   }
 
