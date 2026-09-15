@@ -1,0 +1,25 @@
+{
+  "name": "Отчёты Bitrix24",
+  "short_name": "Bitrix24",
+  "description": "Дашборд отчётов Bitrix24: сделки, лиды, звонки, эффективность менеджеров",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fcfcfb",
+  "theme_color": "#2a78d6",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
