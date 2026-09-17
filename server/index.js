@@ -18,7 +18,7 @@ const { sendActiveRepairsToMax } = require('./sendActiveRepairsToMax');
 const { sendDailyDigest } = require('./dailyDigest');
 const { sendMorningGreetingToChats } = require('./sendMorningGreetingToChats');
 const { sendHolidayGreetingToChats } = require('./sendHolidayGreetingToChats');
-const { getNearbyDealGroups } = require('./nearbyDeals');
+const { getNearbyDealGroupsByRadius } = require('./nearbyDeals');
 const { sendNearbyDealsToMax } = require('./sendNearbyDealsToMax');
 
 const app = express();
@@ -274,7 +274,7 @@ if (holidayChatIds.length) {
 
 app.get('/api/nearby-deals', async (req, res) => {
   try {
-    const data = await getNearbyDealGroups();
+    const data = await getNearbyDealGroupsByRadius();
     res.json({ ok: true, data });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });

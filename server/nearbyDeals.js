@@ -1,7 +1,7 @@
 const { getActiveMeasurements } = require('./activeMeasurements');
 const { getActiveRepairs } = require('./activeRepairs');
 
-const DEFAULT_RADIUS_KM = 10; // close enough to combine into one trip
+const RADII_KM = [10, 30];
 
 function haversineKm(a, b) {
   const R = 6371;
@@ -23,27 +23,23 @@ function union(parents, a, b) {
   if (rootA !== rootB) parents[rootA] = rootB;
 }
 
-// Groups deals from both the measurements and repairs lists whose addresses
-// are within `radiusKm` of each other, so a manager can combine visits into
-// one trip instead of driving out twice.
-async function getNearbyDealGroups(radiusKm = DEFAULT_RADIUS_KM) {
+async function getGeolocatedDeals() {
   const [measurements, repairs] = await Promise.all([getActiveMeasurements(), getActiveRepairs()]);
-
-  const points = [
+  return [
     ...measurements.map((d) => ({ ...d, kind: 'замер' })),
     ...repairs.map((d) => ({ ...d, kind: 'ремонт' })),
   ].filter((d) => d.address?.lat && d.address?.lon);
+}
 
+// Clusters `points` (deals with a resolved address) into groups whose
+// members are all within `radiusKm` of at least one other member — so a
+// manager can combine them into one trip instead of driving out twice.
+function clusterByRadius(points, radiusKm) {
   const parents = points.map((_, i) => i);
-  const pairDistances = [];
 
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) {
-      const km = haversineKm(points[i].address, points[j].address);
-      if (km <= radiusKm) {
-        union(parents, i, j);
-        pairDistances.push({ i, j, km });
-      }
+      if (haversineKm(points[i].address, points[j].address) <= radiusKm) union(parents, i, j);
     }
   }
 
@@ -74,4 +70,19 @@ async function getNearbyDealGroups(radiusKm = DEFAULT_RADIUS_KM) {
     .sort((a, b) => b.deals.length - a.deals.length);
 }
 
-module.exports = { getNearbyDealGroups, haversineKm, DEFAULT_RADIUS_KM };
+// Groups deals from both the measurements and repairs lists at one radius.
+async function getNearbyDealGroups(radiusKm = RADII_KM[0]) {
+  const points = await getGeolocatedDeals();
+  return clusterByRadius(points, radiusKm);
+}
+
+// Same, but at every radius in `radii` at once (default [10, 30]) — a
+// wider radius naturally produces bigger/more groups, so callers usually
+// want to show the tight (10km) groups as "definitely combine" and the
+// wider (30km) ones as "worth considering", not just one cutoff.
+async function getNearbyDealGroupsByRadius(radii = RADII_KM) {
+  const points = await getGeolocatedDeals();
+  return radii.map((radiusKm) => ({ radiusKm, groups: clusterByRadius(points, radiusKm) }));
+}
+
+module.exports = { getNearbyDealGroups, getNearbyDealGroupsByRadius, haversineKm, RADII_KM };

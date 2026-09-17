@@ -1,5 +1,5 @@
 const { bot } = require('./maxClient');
-const { getNearbyDealGroups } = require('./nearbyDeals');
+const { getNearbyDealGroupsByRadius } = require('./nearbyDeals');
 
 function formatGroup(group, index) {
   const lines = [`Группа ${index + 1} (в радиусе ~${group.maxSpreadKm} км):`];
@@ -11,17 +11,22 @@ function formatGroup(group, index) {
   return lines.join('\n');
 }
 
-function formatNearbyDeals(groups) {
-  if (!groups.length) return 'Сделок, которые можно объединить по маршруту, сейчас нет.';
+function formatRadiusSection(radiusKm, groups) {
+  if (!groups.length) return `До ${radiusKm} км: подходящих групп сейчас нет.`;
 
-  const lines = [`Можно объединить поездки — ${groups.length} групп(ы) рядом расположенных адресов:`, ''];
+  const lines = [`До ${radiusKm} км — ${groups.length} групп(ы):`, ''];
   groups.forEach((g, i) => lines.push(formatGroup(g, i), ''));
   return lines.join('\n').trim();
 }
 
+function formatNearbyDeals(byRadius) {
+  const sections = byRadius.map(({ radiusKm, groups }) => formatRadiusSection(radiusKm, groups));
+  return ['Можно объединить поездки:', '', ...sections.map((s) => s + '\n')].join('\n').trim();
+}
+
 async function sendNearbyDealsToMax({ chatId }) {
-  const groups = await getNearbyDealGroups();
-  const text = formatNearbyDeals(groups);
+  const byRadius = await getNearbyDealGroupsByRadius();
+  const text = formatNearbyDeals(byRadius);
   return bot.api.sendMessageToChat(chatId, text, { format: 'markdown' });
 }
 
