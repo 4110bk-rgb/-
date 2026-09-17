@@ -1,3 +1,5 @@
+const { mentionManager } = require('./managerMaxIds');
+
 function formatDaysRu(n, one, few, many) {
   const mod10 = n % 10;
   const mod100 = n % 100;
@@ -16,7 +18,7 @@ function waitStatusEmoji(waitingDays) {
 
 function formatDeal(d, waitLabel) {
   const mark = d.urgent ? '! ' : '';
-  const lines = [`${waitStatusEmoji(d.waitingDays)}${mark}«${d.title}» — ${d.url}`, `  Менеджер: ${d.manager}`];
+  const lines = [`${waitStatusEmoji(d.waitingDays)}${mark}«${d.title}» — ${d.url}`, `  Менеджер: ${mentionManager(d.manager)}`];
 
   if (d.waitingDays !== null) {
     lines.push(`  ${waitLabel}: ${formatDaysRu(d.waitingDays, 'рабочий день', 'рабочих дня', 'рабочих дней')}`);
