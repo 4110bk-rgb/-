@@ -85,29 +85,42 @@ const DAY_FACTS = {
   '10-27': ['Международный день плюшевого мишки 🧸'],
   '10-29': ['День кошек (в США) 🐱'],
 
-  '11-01': ['День гадания на кофейной гуще ☕'],
+  '11-01': ['День гадания на кофейной гуще ☕', 'День менеджера 📊'],
   '11-04': ['День народного единства 🤝'],
   '11-07': ['День объятий с медведем 🐻'],
   '11-11': ['Всемирный день шопинга 🛍️'],
   '11-19': ['Международный день мужчин 👨'],
+  '11-21': ['День бухгалтера 📒'],
   '11-29': ['Всемирный день без покупок 🚫🛒'],
 
   '12-04': ['Введение во храм Пресвятой Богородицы ⛪'],
   '12-05': ['Всемирный день почв 🌱'],
   '12-12': ['День Конституции РФ 🏛️', 'День пряничного домика 🍪'],
+  '12-22': ['День энергетика (а ещё день электрика) ⚡'],
+
+  // Fixed-date professional holidays directly relevant to a gate
+  // sales/installation/repair business.
+  '05-26': ['День российского предпринимательства 💼'],
 };
 
-// Orthodox holidays whose date depends on Easter, so they move every year —
-// listed per year (source: church calendar published each year) instead of
-// baked into the fixed DAY_FACTS table above, which would otherwise show
-// the wrong date once the year changes. Needs a new entry added once 2027's
-// Easter date is known.
+// Holidays whose date shifts every year — either tied to Easter (Orthodox
+// movable feasts) or defined as "Nth weekday of month" (several
+// professional holidays, including ones directly relevant to this
+// business: builder, welder, trade worker, driver). Listed per year
+// instead of baked into the fixed DAY_FACTS table above, which would
+// otherwise show the wrong date once the year changes. Needs a new entry
+// added once next year's dates are published (Easter's around
+// Jan-Feb, the professional ones usually confirmed well in advance too).
 const MOVABLE_HOLIDAYS_BY_YEAR = {
   2026: {
     '04-05': ['Вербное воскресенье (Вход Господень в Иерусалим) ⛪🌿'],
     '04-12': ['Пасха, Светлое Христово Воскресение ⛪🥚'],
     '05-21': ['Вознесение Господне ⛪'],
+    '05-29': ['День сварщика 🔥👷'],
     '05-31': ['Троица (День Святой Троицы) ⛪🕊️'],
+    '07-25': ['День работника торговли 🛒'],
+    '08-09': ['День строителя 🏗️'],
+    '10-25': ['День автомобилиста 🚗'],
   },
 };
 
