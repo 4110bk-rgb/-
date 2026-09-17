@@ -17,6 +17,7 @@ const { getActiveRepairs } = require('./activeRepairs');
 const { sendActiveRepairsToMax } = require('./sendActiveRepairsToMax');
 const { sendDailyDigest } = require('./dailyDigest');
 const { sendMorningGreetingToChats } = require('./sendMorningGreetingToChats');
+const { sendHolidayGreetingToChats } = require('./sendHolidayGreetingToChats');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -210,6 +211,16 @@ app.post('/api/morning-greeting/send-to-max', async (req, res) => {
   }
 });
 
+app.post('/api/holiday-greeting/send-to-max', async (req, res) => {
+  try {
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : holidayChatIds;
+    const result = await sendHolidayGreetingToChats({ chatIds });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Daily 08:30 (Moscow time) digest — active measurements + repairs — to the
 // MAX chat in MAX_CHAT_ID, weekdays only, skipped on Russian holidays.
 const dailyDigestChatId = Number(process.env.MAX_CHAT_ID);
@@ -241,6 +252,22 @@ if (greetingChatIds.length) {
   );
 } else {
   console.warn('MAX_GREETING_CHAT_IDS is not set — the daily 08:00 greeting is disabled.');
+}
+
+// 10:00 (Moscow time) holiday congratulation — every day, but it only
+// actually sends on a named state holiday (New Year, 8 Марта, etc.), later
+// than the regular 08:00/08:30 messages since nobody's rushing to work.
+// Runs every calendar day (not just weekdays) since a holiday can land on
+// any day of the week.
+const holidayChatIds = [...new Set([...greetingChatIds, dailyDigestChatId].filter(Boolean))];
+if (holidayChatIds.length) {
+  cron.schedule(
+    '0 10 * * *',
+    () => {
+      sendHolidayGreetingToChats({ chatIds: holidayChatIds }).catch((err) => console.error('holidayGreeting failed:', err));
+    },
+    { timezone: 'Europe/Moscow' },
+  );
 }
 
 app.listen(PORT, () => {
