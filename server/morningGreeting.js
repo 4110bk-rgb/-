@@ -33,8 +33,13 @@ async function buildMorningGreeting(date = new Date()) {
   if (weatherText) parts.push(`${weatherText}\nПодробнее: ${YANDEX_WEATHER_URL}`);
 
   if (dayFact) {
-    if (dayFact.holiday) parts.push(`🎉 Праздник дня: ${dayFact.holiday}`);
-    if (dayFact.history) parts.push(`А ещё в этот день: ${dayFact.history}`);
+    if (dayFact.holidays.length) {
+      const label = dayFact.holidays.length > 1 ? 'Праздники дня' : 'Праздник дня';
+      parts.push(`🎉 ${label}: ${dayFact.holidays.join(', ')}`);
+    }
+    if (dayFact.history.length) {
+      parts.push(`А ещё в этот день:\n${dayFact.history.join('\n')}`);
+    }
   }
 
   parts.push(pickRotating(CLOSINGS, date));
