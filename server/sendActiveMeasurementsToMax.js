@@ -10,10 +10,11 @@ function formatDaysRu(n, one, few, many) {
 }
 
 function formatDeal(d) {
-  const lines = [`«${d.title}» — ${d.url}`, `  Менеджер: ${d.manager}`];
+  const mark = d.urgent ? '! ' : '';
+  const lines = [`${mark}«${d.title}» — ${d.url}`, `  Менеджер: ${d.manager}`];
 
   if (d.waitingDays !== null) {
-    lines.push(`  Ждёт замера: ${formatDaysRu(d.waitingDays, 'день', 'дня', 'дней')}`);
+    lines.push(`  Ждёт замера: ${formatDaysRu(d.waitingDays, 'рабочий день', 'рабочих дня', 'рабочих дней')}`);
   }
 
   if (d.dateStatus === 'today') {

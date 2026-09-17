@@ -6,10 +6,26 @@ const {
   MEASUREMENT_STAGE_ID,
 } = require('./overdueMeasurements');
 
+const URGENT_THRESHOLD_DAYS = 3;
+
 function dealUrl(dealId) {
   const base = process.env.BITRIX_WEBHOOK_URL;
   const origin = new URL(base).origin;
   return `${origin}/crm/deal/details/${dealId}/`;
+}
+
+// Weekdays elapsed since `start` (midnight-normalized), not counting `start`
+// itself — weekends don't count against how long a measurement has waited.
+function businessDaysSince(start, today) {
+  let count = 0;
+  const cursor = new Date(start);
+  cursor.setDate(cursor.getDate() + 1);
+  while (cursor <= today) {
+    const day = cursor.getDay();
+    if (day !== 0 && day !== 6) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return count;
 }
 
 // When the deal last entered "Ждёт замер" — that's when the wait started.
@@ -40,7 +56,8 @@ async function getActiveMeasurements(referenceDate = new Date()) {
   const results = [];
   for (const deal of deals) {
     const enteredAt = await stageEnteredAt(deal.ID);
-    const waitingDays = enteredAt ? Math.max(0, Math.floor((today - enteredAt) / 86400000)) : null;
+    const enteredDay = enteredAt && new Date(enteredAt.getFullYear(), enteredAt.getMonth(), enteredAt.getDate());
+    const waitingDays = enteredDay ? businessDaysSince(enteredDay, today) : null;
 
     const mentionedDate = extractMeasurementDate(deal.COMMENTS, referenceDate);
     let dateStatus = 'none';
@@ -55,6 +72,9 @@ async function getActiveMeasurements(referenceDate = new Date()) {
       }
     }
 
+    // No agreed date yet and already waiting past the threshold — needs a push.
+    const urgent = dateStatus === 'none' && waitingDays !== null && waitingDays > URGENT_THRESHOLD_DAYS;
+
     results.push({
       dealId: deal.ID,
       title: deal.TITLE,
@@ -64,17 +84,12 @@ async function getActiveMeasurements(referenceDate = new Date()) {
       mentionedDate: mentionedDate ? mentionedDate.toISOString().slice(0, 10) : null,
       dateStatus,
       daysOverdue,
+      urgent,
       comment: stripFormatting(deal.COMMENTS),
     });
   }
 
-  // Overdue first (most overdue on top), then today, then scheduled/none by longest wait.
-  const rank = { overdue: 0, today: 1, scheduled: 2, none: 2 };
-  results.sort((a, b) => {
-    if (rank[a.dateStatus] !== rank[b.dateStatus]) return rank[a.dateStatus] - rank[b.dateStatus];
-    if (a.dateStatus === 'overdue') return b.daysOverdue - a.daysOverdue;
-    return (b.waitingDays || 0) - (a.waitingDays || 0);
-  });
+  results.sort((a, b) => (b.waitingDays || 0) - (a.waitingDays || 0));
 
   return results;
 }
