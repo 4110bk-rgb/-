@@ -15,17 +15,25 @@ function pickRotating(list, date) {
   return list[date.getDate() % list.length];
 }
 
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatDateLine(date) {
+  const text = date.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return `📅 ${capitalize(text)}`;
+}
+
 async function buildMorningGreeting(date = new Date()) {
   const [weather, dayFact] = await Promise.all([getWeatherSummary().catch(() => null), getDayFact(date)]);
 
-  const parts = [pickRotating(OPENINGS, date)];
+  const parts = [pickRotating(OPENINGS, date), formatDateLine(date)];
 
   const weatherText = formatWeatherSummary(weather);
   if (weatherText) parts.push(`${weatherText}\nПодробнее: ${YANDEX_WEATHER_URL}`);
 
   if (dayFact) {
-    const dateStr = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-    if (dayFact.holiday) parts.push(`🎉 Сегодня, ${dateStr} — ${dayFact.holiday}`);
+    if (dayFact.holiday) parts.push(`🎉 Праздник дня: ${dayFact.holiday}`);
     if (dayFact.history) parts.push(`А ещё в этот день: ${dayFact.history}`);
   }
 
