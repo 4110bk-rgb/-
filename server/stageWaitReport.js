@@ -1,13 +1,32 @@
-const { listAll, call, userNames } = require('./bitrixClient');
+const { listAll, call, userNames, contactPhones } = require('./bitrixClient');
 const { extractMeasurementDate, stripFormatting } = require('./overdueMeasurements');
 
 const CATEGORY_ID = 5; // "Монтажная" funnel
 const URGENT_THRESHOLD_DAYS = 3;
 
+// Custom "Адрес" field on the deal (portal-specific field ID) — stores
+// "text|lat;lon|internal_id", with SHOW_MAP enabled so it usually has coords.
+const ADDRESS_FIELD = 'UF_CRM_1736924990844';
+
 function dealUrl(dealId) {
   const base = process.env.BITRIX_WEBHOOK_URL;
   const origin = new URL(base).origin;
   return `${origin}/crm/deal/details/${dealId}/`;
+}
+
+function parseAddressField(raw) {
+  if (!raw) return null;
+  const [text, coords] = raw.split('|');
+  if (!text?.trim()) return null;
+
+  const [lat, lon] = (coords || '').split(';').map(Number);
+  const hasCoords = lat && lon; // "0;0" or ";" both parse to falsy
+  return {
+    text: text.trim(),
+    mapUrl: hasCoords
+      ? `https://yandex.ru/maps/?pt=${lon},${lat}&z=17&l=map`
+      : `https://yandex.ru/maps/?text=${encodeURIComponent(text.trim())}`,
+  };
 }
 
 // Weekdays elapsed since `start` (midnight-normalized), not counting `start`
@@ -43,11 +62,12 @@ async function stageEnteredAt(dealId, stageId) {
 async function getStageWaitReport(stageId, referenceDate = new Date()) {
   const deals = await listAll('crm.deal.list', {
     filter: { CATEGORY_ID, STAGE_ID: stageId },
-    select: ['ID', 'TITLE', 'ASSIGNED_BY_ID', 'COMMENTS'],
+    select: ['ID', 'TITLE', 'ASSIGNED_BY_ID', 'COMMENTS', 'CONTACT_ID', ADDRESS_FIELD],
   });
 
   const managerIds = [...new Set(deals.map((d) => d.ASSIGNED_BY_ID))];
-  const managerNames = await userNames(managerIds);
+  const contactIds = [...new Set(deals.map((d) => d.CONTACT_ID).filter(Boolean))];
+  const [managerNames, phonesByContact] = await Promise.all([userNames(managerIds), contactPhones(contactIds)]);
   const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
 
   const results = [];
@@ -81,6 +101,8 @@ async function getStageWaitReport(stageId, referenceDate = new Date()) {
       dateStatus,
       daysOverdue,
       urgent,
+      address: parseAddressField(deal[ADDRESS_FIELD]),
+      phones: deal.CONTACT_ID ? phonesByContact[deal.CONTACT_ID] || [] : [],
       comment: stripFormatting(deal.COMMENTS),
     });
   }

@@ -22,6 +22,13 @@ function formatDeal(d, waitLabel) {
     lines.push(`  ${waitLabel}: ${formatDaysRu(d.waitingDays, 'рабочий день', 'рабочих дня', 'рабочих дней')}`);
   }
 
+  if (d.address) {
+    lines.push(`  Адрес: [${d.address.text}](${d.address.mapUrl})`);
+  }
+  if (d.phones.length) {
+    lines.push(`  Телефон: ${d.phones.map((p) => `[${p}](tel:${p.replace(/[^\d+]/g, '')})`).join(', ')}`);
+  }
+
   if (d.dateStatus === 'today') {
     lines.push(`  Договорились на сегодня (${d.mentionedDate})`);
   } else if (d.dateStatus === 'overdue') {
@@ -48,4 +55,30 @@ function formatStageWaitReport(items, { listLabel, waitLabel, emptyText }) {
   return lines.join('\n').trim();
 }
 
-module.exports = { formatStageWaitReport, formatDaysRu };
+// Same content as formatStageWaitReport, but split into several messages
+// that each stay under MAX's per-message length limit (4000 chars) — the
+// address/phone lines make a single deal block noticeably longer than the
+// list used to be, so one long report can now tip over that limit.
+function chunkStageWaitReport(items, { listLabel, waitLabel, emptyText }, limit = 3500) {
+  if (!items.length) return [emptyText];
+
+  const header = `${listLabel} (${items.length}):`;
+  const chunks = [];
+  let current = [header, ''];
+  let currentLen = header.length;
+
+  for (const d of items) {
+    const block = formatDeal(d, waitLabel);
+    if (currentLen + block.length > limit && current.length > 2) {
+      chunks.push(current.join('\n').trim());
+      current = [`${header} — продолжение`, ''];
+      currentLen = current[0].length;
+    }
+    current.push(block, '');
+    currentLen += block.length + 2;
+  }
+  chunks.push(current.join('\n').trim());
+  return chunks;
+}
+
+module.exports = { formatStageWaitReport, chunkStageWaitReport, formatDaysRu };
