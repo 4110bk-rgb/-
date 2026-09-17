@@ -2,8 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const { listAll, call, userNames } = require('./bitrixClient');
 
-const CATEGORY_ID = 5; // "Монтажная" funnel
-const COMPLETED_STAGE_ID = 'C5:PREPAYMENT_INVOICE'; // "Замер выполнен"
+// A deal only sits briefly on "Замер выполнен" (C5:PREPAYMENT_INVOICE, in
+// the "Монтажная" funnel) before it's moved into category 0 — the default
+// "Общая" funnel — landing on "Сделали замер/Готовим документы". That's the
+// stage that actually reflects "measurement filed, ready to follow up",
+// so this watches that one rather than the Монтажная stage it passes
+// through on the way there.
+const CATEGORY_ID = 0; // "Общая" (default) funnel
+const COMPLETED_STAGE_ID = 'PREPAYMENT_INVOICE'; // "Сделали замер/Готовим документы"
 
 // Persisted so a deal that moved into "Замер выполнен" is only reported
 // once, across separate cron runs (and server restarts, as long as the
@@ -30,7 +36,7 @@ async function stageEnteredAt(dealId) {
   });
   const items = history.result?.items || [];
   const matches = items
-    .filter((h) => h.STAGE_ID === COMPLETED_STAGE_ID)
+    .filter((h) => h.STAGE_ID === COMPLETED_STAGE_ID && h.CATEGORY_ID === CATEGORY_ID)
     .sort((a, b) => new Date(b.CREATED_TIME) - new Date(a.CREATED_TIME));
   return matches[0] ? new Date(matches[0].CREATED_TIME) : null;
 }
