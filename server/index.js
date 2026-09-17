@@ -12,6 +12,8 @@ const { getOverdueMeasurements } = require('./overdueMeasurements');
 const { sendOverdueMeasurementsToMax } = require('./sendOverdueMeasurementsToMax');
 const { getActiveMeasurements } = require('./activeMeasurements');
 const { sendActiveMeasurementsToMax } = require('./sendActiveMeasurementsToMax');
+const { getActiveRepairs } = require('./activeRepairs');
+const { sendActiveRepairsToMax } = require('./sendActiveRepairsToMax');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -160,6 +162,25 @@ app.post('/api/active-measurements/send-to-max', async (req, res) => {
   try {
     const chatId = Number(req.body.chatId);
     const message = await sendActiveMeasurementsToMax({ chatId });
+    res.json({ ok: true, data: message });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/api/active-repairs', async (req, res) => {
+  try {
+    const data = await getActiveRepairs();
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/active-repairs/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const message = await sendActiveRepairsToMax({ chatId });
     res.json({ ok: true, data: message });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
