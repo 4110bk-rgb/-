@@ -1,33 +1,35 @@
 const { getWeatherSummary, formatWeatherSummary } = require('./weather');
 const { getDayFact } = require('./dayFacts');
 
+const YANDEX_WEATHER_URL = 'https://yandex.ru/pogoda/lipetsk';
+
+const OPENINGS = ['Доброе утро! 👋☀️ Это Виталик!', 'Всем доброе утро! 😊👋 На связи Виталик!', 'Доброе утро, команда! 👋✨ Это снова Виталик!'];
+
 const CLOSINGS = [
   'Хорошего и продуктивного дня всем! Пусть всё получится 💪',
   'Успешного дня, команда! Всё будет отлично 🙌',
   'Пусть сегодня всё идёт по плану — хорошего дня всем! ☀️',
 ];
 
-function pickClosing(date) {
-  return CLOSINGS[date.getDate() % CLOSINGS.length];
+function pickRotating(list, date) {
+  return list[date.getDate() % list.length];
 }
 
 async function buildMorningGreeting(date = new Date()) {
   const [weather, dayFact] = await Promise.all([getWeatherSummary().catch(() => null), getDayFact(date)]);
 
-  const parts = ['Доброе утро! ☀️'];
+  const parts = [pickRotating(OPENINGS, date)];
 
   const weatherText = formatWeatherSummary(weather);
-  if (weatherText) parts.push(weatherText);
+  if (weatherText) parts.push(`${weatherText}\nПодробнее: ${YANDEX_WEATHER_URL}`);
 
   if (dayFact) {
     const dateStr = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-    const bits = [];
-    if (dayFact.holiday) bits.push(dayFact.holiday);
-    if (dayFact.history) bits.push(dayFact.history);
-    if (bits.length) parts.push(`Сегодня, ${dateStr} — ${bits.join('. А ещё: ')}`);
+    if (dayFact.holiday) parts.push(`🎉 Сегодня, ${dateStr} — ${dayFact.holiday}`);
+    if (dayFact.history) parts.push(`А ещё в этот день: ${dayFact.history}`);
   }
 
-  parts.push(pickClosing(date));
+  parts.push(pickRotating(CLOSINGS, date));
 
   return parts.join('\n\n');
 }
