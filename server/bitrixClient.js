@@ -74,4 +74,14 @@ async function userNames(ids) {
   return map;
 }
 
-module.exports = { call, listAll, userNames };
+async function contactPhones(ids) {
+  if (!ids.length) return {};
+  const contacts = await listAll('crm.contact.list', { filter: { ID: ids }, select: ['ID', 'PHONE'] });
+  const map = {};
+  for (const c of contacts) {
+    map[c.ID] = (c.PHONE || []).map((p) => p.VALUE);
+  }
+  return map;
+}
+
+module.exports = { call, listAll, userNames, contactPhones };

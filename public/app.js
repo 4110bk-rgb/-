@@ -271,6 +271,44 @@ function renderCalls(result) {
   body.appendChild(chartBlock);
 }
 
+function renderOverdue(result) {
+  const body = document.getElementById('overdue-body');
+  body.innerHTML = '';
+
+  if (!result.ok) {
+    body.appendChild(el('div', 'panel-error', `Не удалось получить данные: ${result.error}`));
+    return;
+  }
+
+  const overdue = result.data;
+  if (!overdue.length) {
+    body.appendChild(el('div', null, 'Просроченных замеров нет — все сделки на стадии «Ждёт замер» в графике.'));
+    return;
+  }
+
+  const table = el('table', 'conversion-table');
+  table.appendChild(el('thead', null, `
+    <tr>
+      <th>Сделка</th>
+      <th>Менеджер</th>
+      <th>Замер планировался</th>
+      <th>Просрочка</th>
+    </tr>`));
+
+  const tbody = el('tbody');
+  for (const d of overdue) {
+    const row = el('tr');
+    row.innerHTML = `
+      <td>#${d.dealId} ${d.title}</td>
+      <td>${d.manager}</td>
+      <td>${d.mentionedDate}</td>
+      <td>${d.daysOverdue} дн.</td>`;
+    tbody.appendChild(row);
+  }
+  table.appendChild(tbody);
+  body.appendChild(table);
+}
+
 async function refresh() {
   const statusEl = document.getElementById('status');
   try {
@@ -288,6 +326,14 @@ async function refresh() {
   } catch (err) {
     statusEl.textContent = `Ошибка обновления: ${err.message}`;
     statusEl.classList.add('stale');
+  }
+
+  try {
+    const overdueRes = await fetch('/api/overdue-measurements');
+    if (!overdueRes.ok) throw new Error(`HTTP ${overdueRes.status}`);
+    renderOverdue(await overdueRes.json());
+  } catch (err) {
+    renderOverdue({ ok: false, error: err.message });
   }
 }
 
