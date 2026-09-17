@@ -25,7 +25,8 @@ function formatDeal(d, waitLabel) {
   }
 
   if (d.address) {
-    lines.push(`  Адрес: [${d.address.text}](${d.address.mapUrl})`);
+    const note = d.address.fromComment ? ' (из комментария)' : '';
+    lines.push(`  Адрес: [${d.address.text}](${d.address.mapUrl})${note}`);
   }
   if (d.phones.length) {
     lines.push(`  Телефон: ${d.phones.map((p) => `[${p}](tel:${p.replace(/[^\d+]/g, '')})`).join(', ')}`);

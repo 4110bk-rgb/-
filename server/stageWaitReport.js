@@ -31,6 +31,29 @@ function parseAddressField(raw) {
   };
 }
 
+// Fallback for when the structured "Адрес" field is empty but a manager (or
+// the BitrixGPT note-taker) wrote "Адрес: ..." into the free-text comment —
+// captures up to the next label-like word or end of string. No coordinates
+// available this way, so the map link is a text search rather than a pin.
+function extractAddressFromComment(rawText) {
+  const text = stripFormatting(rawText);
+  if (!text) return null;
+
+  const match = text.match(/[Аа]дрес[а-яА-Я\s]{0,15}:\s*(.+?)(?=\s+(?:[Тт]елефон|[Тт]ел\.|[Кк]онтакт|[Кк]лиент)\s*:|$)/);
+  if (!match) return null;
+
+  const addr = match[1].trim().replace(/[.,;]+$/, '');
+  if (!addr || addr.length > 150) return null;
+
+  return {
+    text: addr,
+    lat: null,
+    lon: null,
+    mapUrl: `https://yandex.ru/maps/?text=${encodeURIComponent(addr)}`,
+    fromComment: true,
+  };
+}
+
 // Weekdays elapsed since `start` (midnight-normalized), not counting `start`
 // itself — weekends don't count against how long a deal has waited.
 function businessDaysSince(start, today) {
@@ -103,7 +126,7 @@ async function getStageWaitReport(stageId, referenceDate = new Date()) {
       dateStatus,
       daysOverdue,
       urgent,
-      address: parseAddressField(deal[ADDRESS_FIELD]),
+      address: parseAddressField(deal[ADDRESS_FIELD]) || extractAddressFromComment(deal.COMMENTS),
       phones: deal.CONTACT_ID ? phonesByContact[deal.CONTACT_ID] || [] : [],
       comment: stripFormatting(deal.COMMENTS),
     });
