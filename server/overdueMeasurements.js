@@ -82,4 +82,10 @@ async function getOverdueMeasurements(referenceDate = new Date()) {
   return overdue;
 }
 
-module.exports = { getOverdueMeasurements, extractMeasurementDate };
+module.exports = {
+  getOverdueMeasurements,
+  extractMeasurementDate,
+  stripFormatting,
+  MEASUREMENT_CATEGORY_ID,
+  MEASUREMENT_STAGE_ID,
+};
