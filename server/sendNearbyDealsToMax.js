@@ -1,14 +1,17 @@
 const { bot } = require('./maxClient');
 const { getNearbyDealGroupsByRadius } = require('./nearbyDeals');
 
+const KIND_EMOJI = { замер: '📏', ремонт: '🔧' };
+
 function formatGroup(group, index) {
-  const lines = [`Группа ${index + 1} (в радиусе ~${group.maxSpreadKm} км):`];
+  const lines = [`Группа ${index + 1} (в радиусе ~${group.maxSpreadKm} км):`, ''];
   for (const d of group.deals) {
-    lines.push(`  [${d.kind}] «${d.title}» — ${d.manager}`);
+    lines.push(`${KIND_EMOJI[d.kind] || ''} «${d.title}» — ${d.manager}`);
     lines.push(`  ${d.address.text}`);
     lines.push(`  [Карта](${d.address.mapUrl}) · [Сделка](${d.url})`);
+    lines.push('');
   }
-  return lines.join('\n');
+  return lines.join('\n').trim();
 }
 
 function formatRadiusSection(radiusKm, groups) {
