@@ -18,6 +18,8 @@ const { sendActiveRepairsToMax } = require('./sendActiveRepairsToMax');
 const { sendDailyDigest } = require('./dailyDigest');
 const { sendMorningGreetingToChats } = require('./sendMorningGreetingToChats');
 const { sendHolidayGreetingToChats } = require('./sendHolidayGreetingToChats');
+const { getNearbyDealGroups } = require('./nearbyDeals');
+const { sendNearbyDealsToMax } = require('./sendNearbyDealsToMax');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -269,6 +271,25 @@ if (holidayChatIds.length) {
     { timezone: 'Europe/Moscow' },
   );
 }
+
+app.get('/api/nearby-deals', async (req, res) => {
+  try {
+    const data = await getNearbyDealGroups();
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/nearby-deals/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const message = await sendNearbyDealsToMax({ chatId });
+    res.json({ ok: true, data: message });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Bitrix24 reports dashboard running at http://localhost:${PORT}`);

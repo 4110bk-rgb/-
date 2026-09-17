@@ -23,6 +23,8 @@ function parseAddressField(raw) {
   const hasCoords = lat && lon; // "0;0" or ";" both parse to falsy
   return {
     text: text.trim(),
+    lat: hasCoords ? lat : null,
+    lon: hasCoords ? lon : null,
     mapUrl: hasCoords
       ? `https://yandex.ru/maps/?pt=${lon},${lat}&z=17&l=map`
       : `https://yandex.ru/maps/?text=${encodeURIComponent(text.trim())}`,
