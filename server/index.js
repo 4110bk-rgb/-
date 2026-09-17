@@ -217,7 +217,7 @@ app.post('/api/morning-greeting/send-to-max', async (req, res) => {
 
 app.post('/api/measurement-completed/send-to-max', async (req, res) => {
   try {
-    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : greetingChatIds;
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : workChatIds;
     const result = await sendMeasurementCompletedToMax({ chatIds });
     res.json({ ok: true, data: result });
   } catch (err) {
@@ -227,7 +227,7 @@ app.post('/api/measurement-completed/send-to-max', async (req, res) => {
 
 app.post('/api/new-deals/send-to-max', async (req, res) => {
   try {
-    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : greetingChatIds;
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : workChatIds;
     const result = await sendNewDealsToMax({ chatIds });
     res.json({ ok: true, data: result });
   } catch (err) {
@@ -281,19 +281,26 @@ if (greetingChatIds.length) {
 // 12:00 and 19:00 (Moscow time) — checks for deals that moved into "Сделали
 // замер/Готовим документы" since the last check, and announces them with an
 // @mention of the responsible manager so a manager knows the замерщик
-// filed the measurement and it's ready to follow up on. Goes to the team
-// chats (not the private digest chat) since that's where the @mention
-// actually notifies someone. Same weekday/holiday rule as the rest of the
-// schedule; sends nothing when there's no new transition.
-if (greetingChatIds.length) {
+// filed the measurement and it's ready to follow up on. Goes to
+// MAX_WORK_CHAT_IDS (the managers+замерщик working chat), not the team
+// chats, since that's where the @mention actually notifies someone. Same
+// weekday/holiday rule as the rest of the schedule; sends nothing when
+// there's no new transition.
+const workChatIds = (process.env.MAX_WORK_CHAT_IDS || '')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter(Boolean);
+if (workChatIds.length) {
   cron.schedule(
     '0 12,19 * * 1-5',
     () => {
-      sendMeasurementCompletedToMax({ chatIds: greetingChatIds }).catch((err) => console.error('measurementCompleted failed:', err));
-      sendNewDealsToMax({ chatIds: greetingChatIds }).catch((err) => console.error('newDeals failed:', err));
+      sendMeasurementCompletedToMax({ chatIds: workChatIds }).catch((err) => console.error('measurementCompleted failed:', err));
+      sendNewDealsToMax({ chatIds: workChatIds }).catch((err) => console.error('newDeals failed:', err));
     },
     { timezone: 'Europe/Moscow' },
   );
+} else {
+  console.warn('MAX_WORK_CHAT_IDS is not set — the 12:00/19:00 measurement/repair alerts are disabled.');
 }
 
 // 10:00 (Moscow time) holiday congratulation — every day, but it only
