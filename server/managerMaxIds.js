@@ -7,7 +7,9 @@ const MANAGER_MAX_IDS = {
   'Чистозвонова Марина': 45008227,
   'Кирьянова Надежда': 50087257,
   'Путинцева Ирина': 27145253,
-  // 'Гулякина Валерия': not found in either chat yet
+  // Shared office account "Ворота смарт Алютех Липецк", not a personal
+  // profile — confirmed by the user as the account Гулякина Валерия uses.
+  'Гулякина Валерия': 112976140,
 };
 
 // MAX mentions are a markdown link to max://user/<id> — max://user/name
