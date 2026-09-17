@@ -9,9 +9,17 @@ function formatDaysRu(n, one, few, many) {
   return `${n} ${many}`;
 }
 
+// 🟢 just started waiting, 🟡 getting stale, 🔴 waiting too long — all in business days.
+function waitStatusEmoji(waitingDays) {
+  if (waitingDays === null) return '';
+  if (waitingDays > 5) return '🔴 ';
+  if (waitingDays >= 3) return '🟡 ';
+  return '🟢 ';
+}
+
 function formatDeal(d) {
   const mark = d.urgent ? '! ' : '';
-  const lines = [`${mark}«${d.title}» — ${d.url}`, `  Менеджер: ${d.manager}`];
+  const lines = [`${waitStatusEmoji(d.waitingDays)}${mark}«${d.title}» — ${d.url}`, `  Менеджер: ${d.manager}`];
 
   if (d.waitingDays !== null) {
     lines.push(`  Ждёт замера: ${formatDaysRu(d.waitingDays, 'рабочий день', 'рабочих дня', 'рабочих дней')}`);
