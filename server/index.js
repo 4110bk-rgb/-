@@ -1,6 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
+const cron = require('node-cron');
 const { getDealsReport, getLeadsReport, getCallsReport, buildManagerEfficiencyReport } = require('./reports');
 const { buildWorkbook } = require('./exportXlsx');
 const { getDealAttachments } = require('./dealAttachments');
@@ -14,6 +15,7 @@ const { getActiveMeasurements } = require('./activeMeasurements');
 const { sendActiveMeasurementsToMax } = require('./sendActiveMeasurementsToMax');
 const { getActiveRepairs } = require('./activeRepairs');
 const { sendActiveRepairsToMax } = require('./sendActiveRepairsToMax');
+const { sendDailyDigest } = require('./dailyDigest');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -186,6 +188,31 @@ app.post('/api/active-repairs/send-to-max', async (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+
+app.post('/api/daily-digest/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const result = await sendDailyDigest({ chatId });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Daily 08:30 (Moscow time) digest — active measurements + repairs — to the
+// MAX chat in MAX_CHAT_ID, weekdays only, skipped on Russian holidays.
+const dailyDigestChatId = Number(process.env.MAX_CHAT_ID);
+if (dailyDigestChatId) {
+  cron.schedule(
+    '30 8 * * 1-5',
+    () => {
+      sendDailyDigest({ chatId: dailyDigestChatId }).catch((err) => console.error('dailyDigest failed:', err));
+    },
+    { timezone: 'Europe/Moscow' },
+  );
+} else {
+  console.warn('MAX_CHAT_ID is not set — the daily 08:30 digest is disabled.');
+}
 
 app.listen(PORT, () => {
   console.log(`Bitrix24 reports dashboard running at http://localhost:${PORT}`);
