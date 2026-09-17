@@ -1,6 +1,6 @@
-const { bot } = require('./maxClient');
 const { getActiveRepairs } = require('./activeRepairs');
 const { formatStageWaitReport, chunkStageWaitReport } = require('./stageWaitFormat');
+const { sendChunked } = require('./maxChunkedSend');
 
 const LABELS = {
   listLabel: 'Актуальные ремонты',
@@ -15,12 +15,7 @@ function formatActiveRepairs(repairs) {
 async function sendActiveRepairsToMax({ chatId }) {
   const repairs = await getActiveRepairs();
   const chunks = chunkStageWaitReport(repairs, LABELS);
-
-  let lastMessage;
-  for (const chunk of chunks) {
-    lastMessage = await bot.api.sendMessageToChat(chatId, chunk, { format: 'markdown' });
-  }
-  return lastMessage;
+  return sendChunked(chatId, chunks, { format: 'markdown' });
 }
 
 module.exports = { sendActiveRepairsToMax, formatActiveRepairs };
