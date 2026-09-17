@@ -21,6 +21,7 @@ const { sendHolidayGreetingToChats } = require('./sendHolidayGreetingToChats');
 const { getNearbyDealGroupsByRadius } = require('./nearbyDeals');
 const { sendNearbyDealsToMax } = require('./sendNearbyDealsToMax');
 const { sendMeasurementCompletedToMax } = require('./sendMeasurementCompletedToMax');
+const { sendNewDealsToMax } = require('./sendNewDealsToMax');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -224,6 +225,16 @@ app.post('/api/measurement-completed/send-to-max', async (req, res) => {
   }
 });
 
+app.post('/api/new-deals/send-to-max', async (req, res) => {
+  try {
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : greetingChatIds;
+    const result = await sendNewDealsToMax({ chatIds });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/api/holiday-greeting/send-to-max', async (req, res) => {
   try {
     const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : holidayChatIds;
@@ -279,6 +290,7 @@ if (greetingChatIds.length) {
     '0 12,19 * * 1-5',
     () => {
       sendMeasurementCompletedToMax({ chatIds: greetingChatIds }).catch((err) => console.error('measurementCompleted failed:', err));
+      sendNewDealsToMax({ chatIds: greetingChatIds }).catch((err) => console.error('newDeals failed:', err));
     },
     { timezone: 'Europe/Moscow' },
   );
