@@ -22,6 +22,7 @@ const { getNearbyDealGroupsByRadius } = require('./nearbyDeals');
 const { sendNearbyDealsToMax } = require('./sendNearbyDealsToMax');
 const { sendMeasurementCompletedToMax } = require('./sendMeasurementCompletedToMax');
 const { sendNewDealsToMax } = require('./sendNewDealsToMax');
+const { sendActiveDealsDigestToChats } = require('./sendActiveDealsDigestToChats');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -215,6 +216,16 @@ app.post('/api/morning-greeting/send-to-max', async (req, res) => {
   }
 });
 
+app.post('/api/active-deals-digest/send-to-max', async (req, res) => {
+  try {
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : workChatIds;
+    const result = await sendActiveDealsDigestToChats({ chatIds });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/api/measurement-completed/send-to-max', async (req, res) => {
   try {
     const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : workChatIds;
@@ -290,6 +301,20 @@ const workChatIds = (process.env.MAX_WORK_CHAT_IDS || '')
   .split(',')
   .map((s) => Number(s.trim()))
   .filter(Boolean);
+
+// 08:00 (Moscow time) — active measurements + repairs (no greeting, that
+// already goes to MAX_GREETING_CHAT_IDS) to the same working chat, so
+// managers and the замерщик start the day with the full picture too.
+if (workChatIds.length) {
+  cron.schedule(
+    '0 8 * * 1-5',
+    () => {
+      sendActiveDealsDigestToChats({ chatIds: workChatIds }).catch((err) => console.error('activeDealsDigest failed:', err));
+    },
+    { timezone: 'Europe/Moscow' },
+  );
+}
+
 if (workChatIds.length) {
   cron.schedule(
     '0 12,19 * * 1-5',
