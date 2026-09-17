@@ -216,8 +216,8 @@ app.post('/api/morning-greeting/send-to-max', async (req, res) => {
 
 app.post('/api/measurement-completed/send-to-max', async (req, res) => {
   try {
-    const chatId = Number(req.body.chatId);
-    const result = await sendMeasurementCompletedToMax({ chatId });
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : greetingChatIds;
+    const result = await sendMeasurementCompletedToMax({ chatIds });
     res.json({ ok: true, data: result });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -267,16 +267,18 @@ if (greetingChatIds.length) {
   console.warn('MAX_GREETING_CHAT_IDS is not set — the daily 08:00 greeting is disabled.');
 }
 
-// 12:00 and 19:00 (Moscow time) — checks for deals that moved from "Ждёт
-// замер" into "Замер выполнен" (same "Монтажная" funnel) since the last
-// check, and announces them so a manager knows the замерщик filed the
-// measurement and it's ready to follow up on. Same weekday/holiday rule as
-// the rest of the schedule; sends nothing when there's no new transition.
-if (dailyDigestChatId) {
+// 12:00 and 19:00 (Moscow time) — checks for deals that moved into "Сделали
+// замер/Готовим документы" since the last check, and announces them with an
+// @mention of the responsible manager so a manager knows the замерщик
+// filed the measurement and it's ready to follow up on. Goes to the team
+// chats (not the private digest chat) since that's where the @mention
+// actually notifies someone. Same weekday/holiday rule as the rest of the
+// schedule; sends nothing when there's no new transition.
+if (greetingChatIds.length) {
   cron.schedule(
     '0 12,19 * * 1-5',
     () => {
-      sendMeasurementCompletedToMax({ chatId: dailyDigestChatId }).catch((err) => console.error('measurementCompleted failed:', err));
+      sendMeasurementCompletedToMax({ chatIds: greetingChatIds }).catch((err) => console.error('measurementCompleted failed:', err));
     },
     { timezone: 'Europe/Moscow' },
   );
