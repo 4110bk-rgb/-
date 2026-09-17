@@ -20,6 +20,7 @@ const { sendMorningGreetingToChats } = require('./sendMorningGreetingToChats');
 const { sendHolidayGreetingToChats } = require('./sendHolidayGreetingToChats');
 const { getNearbyDealGroupsByRadius } = require('./nearbyDeals');
 const { sendNearbyDealsToMax } = require('./sendNearbyDealsToMax');
+const { sendMeasurementCompletedToMax } = require('./sendMeasurementCompletedToMax');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -213,6 +214,16 @@ app.post('/api/morning-greeting/send-to-max', async (req, res) => {
   }
 });
 
+app.post('/api/measurement-completed/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const result = await sendMeasurementCompletedToMax({ chatId });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.post('/api/holiday-greeting/send-to-max', async (req, res) => {
   try {
     const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : holidayChatIds;
@@ -254,6 +265,21 @@ if (greetingChatIds.length) {
   );
 } else {
   console.warn('MAX_GREETING_CHAT_IDS is not set — the daily 08:00 greeting is disabled.');
+}
+
+// 12:00 and 19:00 (Moscow time) — checks for deals that moved from "Ждёт
+// замер" into "Замер выполнен" (same "Монтажная" funnel) since the last
+// check, and announces them so a manager knows the замерщик filed the
+// measurement and it's ready to follow up on. Same weekday/holiday rule as
+// the rest of the schedule; sends nothing when there's no new transition.
+if (dailyDigestChatId) {
+  cron.schedule(
+    '0 12,19 * * 1-5',
+    () => {
+      sendMeasurementCompletedToMax({ chatId: dailyDigestChatId }).catch((err) => console.error('measurementCompleted failed:', err));
+    },
+    { timezone: 'Europe/Moscow' },
+  );
 }
 
 // 10:00 (Moscow time) holiday congratulation — every day, but it only
