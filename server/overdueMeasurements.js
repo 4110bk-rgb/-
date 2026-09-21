@@ -30,9 +30,11 @@ function formatRangeRu(start, end) {
   return `${startPart} – ${end.getDate()} ${MONTH_NAMES_BY_INDEX[end.getMonth()]}`;
 }
 
-// Finds the most recently mentioned date (or date range) in a deal's
-// free-text comment. Managers sometimes dictate an exact day ("8 октября")
-// and sometimes a window during which the measurement can happen ("с 5 по 8
+// Finds the current date (or date range) in a deal's free-text comment.
+// Managers write the up-to-date info first and append older notes/details
+// after it, so the FIRST date-like mention in the text is what's current —
+// not the last. They sometimes dictate an exact day ("8 октября") and
+// sometimes a window during which the measurement can happen ("с 5 по 8
 // октября", "5-8 октября", "с 5.10 по 8.10") — both are worth telling apart,
 // since a range shouldn't be treated as "overdue" until its LAST day passes.
 // Returns { type: 'exact', date } | { type: 'range', start, end } | null.
@@ -126,8 +128,8 @@ function extractMeasurementDateInfo(rawText, referenceDate) {
 
   if (!candidates.length) return null;
   candidates.sort((a, b) => a.index - b.index);
-  const last = candidates[candidates.length - 1];
-  return last.type === 'range' ? { type: 'range', start: last.start, end: last.end } : { type: 'exact', date: last.date };
+  const first = candidates[0];
+  return first.type === 'range' ? { type: 'range', start: first.start, end: first.end } : { type: 'exact', date: first.date };
 }
 
 // Back-compat single-date view: a range's end day is what "the measurement
