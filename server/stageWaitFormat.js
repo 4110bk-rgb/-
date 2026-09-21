@@ -6,6 +6,19 @@ function formatDaysRu(n, one, few, many) {
   return `${n} ${many}`;
 }
 
+// MAX doesn't support tel: links (in markdown or buttons — only http/https),
+// so a phone can't be a real link there. Its client still recognizes a
+// plain, standard-looking Russian number in the message text as callable,
+// which normalizing to a consistent "+7 (XXX) XXX-XX-XX" shape maximizes —
+// Bitrix24 stores phones in a mix of formats (with/without +7, spacing, etc).
+function normalizePhone(raw) {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('8')) digits = `7${digits.slice(1)}`;
+  if (digits.length === 10) digits = `7${digits}`;
+  if (digits.length !== 11 || !digits.startsWith('7')) return raw;
+  return `+7 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 9)}-${digits.slice(9, 11)}`;
+}
+
 // 🟢 just started waiting, 🟡 getting stale, 🔴 waiting too long — all in business days.
 function waitStatusEmoji(waitingDays) {
   if (waitingDays === null) return '';
@@ -25,7 +38,7 @@ function formatDeal(d) {
   lines.push(`  [Сделка](${d.url})`);
 
   if (d.phones.length) {
-    lines.push(`  Телефон: ${d.phones.map((p) => `[${p}](tel:${p.replace(/[^\d+]/g, '')})`).join(', ')}`);
+    lines.push(`  Телефон: ${d.phones.map(normalizePhone).join(', ')}`);
   }
 
   if (d.address) {
