@@ -35,15 +35,15 @@ function formatDeal(d) {
     lines.push(`  Ждёт: ${formatDaysRu(d.waitingDays, 'рабочий день', 'рабочих дня', 'рабочих дней')}`);
   }
 
-  lines.push(`  [Сделка](${d.url})`);
+  if (d.address) {
+    const note = d.address.fromComment ? ' (из комментария)' : '';
+    lines.push(`  [Сделка](${d.url}) · [Адрес](${d.address.mapUrl})${note}`);
+  } else {
+    lines.push(`  [Сделка](${d.url})`);
+  }
 
   if (d.phones.length) {
     lines.push(`  Телефон: ${d.phones.map(normalizePhone).join(', ')}`);
-  }
-
-  if (d.address) {
-    const note = d.address.fromComment ? ' (из комментария)' : '';
-    lines.push(`  Адрес: [Карта](${d.address.mapUrl})${note}`);
   }
 
   if (d.dateStatus === 'today') {
