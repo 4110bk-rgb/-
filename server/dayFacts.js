@@ -148,7 +148,7 @@ function monthKey(date) {
 // left skews toward science, culture, and other neutral "huh, interesting"
 // facts, which is the best a keyword filter can do without reading each one.
 const SENSITIVE_RE =
-  /войн|воен|вторжен|теракт|терро|погиб|жертв|убий|убит|казн|расстрел|резня|геноцид|революц|переворот|восстан|путч|оккупац|диктат|репресс|скончал|умер[лт]|катастроф|взрыв|крестов|голод|эпидеми|пандеми|чрезвычайн|санкц|обвинен|осуд|приговор|тюрьм|концлагер|холокост|антисемит|расизм|дискримин|порабо|рабств|пытк|фсб|кгб|нквд|цру|разведк|шпион|спецслужб|заговор|конспиролог|сбил|крушени|роспуск|распущ|импичмент|отставк|германи|наводнени|землетрясен|смертельн|отравлен|алкогол|спиртн|суррогат|наркот|самоубийств|погром|неконституц|разгром|сражени|битв|штурм|осад|авари|чернобыл|избиени|побоищ|аннекс|незаконн|удар|беспилотник|дрон|перехват|свержен|диссидент|преследован|обстрел|фронт|мобилизац/i;
+  /войн|воен|вторжен|теракт|терро|погиб|жертв|убий|убит|казн|расстрел|резня|геноцид|революц|переворот|восстан|путч|оккупац|диктат|репресс|скончал|умер[лт]|катастроф|взрыв|крестов|голод|эпидеми|пандеми|чрезвычайн|санкц|обвинен|осуд|приговор|тюрьм|концлагер|холокост|антисемит|расизм|дискримин|порабо|рабств|пытк|фсб|кгб|нквд|цру|разведк|шпион|спецслужб|заговор|конспиролог|сбил|крушени|роспуск|распущ|импичмент|отставк|германи|наводнени|землетрясен|смертельн|отравлен|алкогол|спиртн|суррогат|наркот|самоубийств|погром|неконституц|разгром|сражени|битв|штурм|осад|авари|чернобыл|избиени|побоищ|аннекс|незаконн|удар|беспилотник|дрон|перехват|свержен|диссидент|преследован|обстрел|фронт|мобилизац|интервенц|оборон/i;
 
 // A "proud" event beats a merely relevant one, which beats a generic one —
 // rank by: Lipetsk + achievement > Lipetsk > Russia/USSR + achievement >
@@ -193,13 +193,66 @@ async function getWikipediaHistory(date, count) {
   }
 }
 
+async function fetchWikipediaHolidays(date) {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const res = await fetch(`https://ru.wikipedia.org/api/rest_v1/feed/onthisday/holidays/${mm}/${dd}`, {
+    headers: { 'User-Agent': 'vorota2-bitrix-dashboard/1.0 (internal tool)' },
+  });
+  if (!res.ok) throw new Error(`Wikipedia onthisday HTTP ${res.status}`);
+  const data = await res.json();
+  return data.holidays || [];
+}
+
+// Wikipedia's holidays feed is mostly noise for this purpose — long lists of
+// Orthodox/Catholic name-days ("Александр, Евсевий, Иоанн...") and obscure
+// icon commemorations, not the "международный день X" kind of observance
+// that reads like an actual holiday. HOLIDAY_SHAPE_RE keeps only entries
+// that look like one of those recognizable, nameable observance days.
+const HOLIDAY_SHAPE_RE = /^(Международный день|Всемирный день|Общероссийский день|Национальный день|ООН\s*—|[А-ЯЁ][а-яё]+\s*—\s*День)/;
+
+// Loose match so a wiki fallback holiday doesn't duplicate a curated one
+// that's the same observance worded slightly differently (with/without a
+// trailing emoji, period, or extra description) — e.g. curated "Международный
+// день благотворительности ❤️" vs wiki's "Международный день благотворительности."
+function normalizeForDedup(text) {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').trim();
+}
+
+function isDuplicate(text, existing) {
+  const norm = normalizeForDedup(text);
+  return existing.some((e) => {
+    const eNorm = normalizeForDedup(e);
+    return norm === eNorm || norm.includes(eNorm) || eNorm.includes(norm);
+  });
+}
+
+async function getWikipediaHolidays(date, count, exclude) {
+  try {
+    const holidays = await fetchWikipediaHolidays(date);
+    return holidays
+      .map((h) => h?.text)
+      .filter((t) => t && !SENSITIVE_RE.test(t) && HOLIDAY_SHAPE_RE.test(t) && !isDuplicate(t, exclude))
+      .map((t, i) => ({ t, i, score: relevanceScore(t) }))
+      .sort((a, b) => b.score - a.score || a.i - b.i)
+      .slice(0, count)
+      .map(({ t }) => t);
+  } catch {
+    return []; // network hiccup or API change — the day just goes without a fallback holiday
+  }
+}
+
 async function getDayFact(date = new Date()) {
   const key = monthKey(date);
   const movable = MOVABLE_HOLIDAYS_BY_YEAR[date.getFullYear()]?.[key] || [];
-  const holidays = [...(DAY_FACTS[key] || []), ...movable];
-
+  const curatedHolidays = [...(DAY_FACTS[key] || []), ...movable];
   const curatedHistory = DAY_HISTORY[key] || [];
-  const wikiHistory = curatedHistory.length < 2 ? await getWikipediaHistory(date, 2 - curatedHistory.length) : [];
+
+  const [wikiHolidays, wikiHistory] = await Promise.all([
+    curatedHolidays.length < 2 ? getWikipediaHolidays(date, 2 - curatedHolidays.length, curatedHolidays) : [],
+    curatedHistory.length < 2 ? getWikipediaHistory(date, 2 - curatedHistory.length) : [],
+  ]);
+  const holidays = [...curatedHolidays, ...wikiHolidays];
   const history = [...curatedHistory, ...wikiHistory];
 
   if (!holidays.length && !history.length) return null;
