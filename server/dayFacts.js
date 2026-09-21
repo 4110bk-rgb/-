@@ -148,7 +148,20 @@ function monthKey(date) {
 // left skews toward science, culture, and other neutral "huh, interesting"
 // facts, which is the best a keyword filter can do without reading each one.
 const SENSITIVE_RE =
-  /войн|вторжен|теракт|терро|погиб|жертв|убий|убит|казн|расстрел|резня|геноцид|революц|переворот|восстан|путч|оккупац|диктат|репресс|скончал|катастроф|взрыв|крестов|голод|эпидеми|пандеми|чрезвычайн|санкц|обвинен|осуд|приговор|тюрьм|концлагер|холокост|антисемит|расизм|дискримин|порабо|рабств|пытк|фсб|кгб|нквд|цру|разведк|шпион|спецслужб|заговор|конспиролог/i;
+  /войн|воен|вторжен|теракт|терро|погиб|жертв|убий|убит|казн|расстрел|резня|геноцид|революц|переворот|восстан|путч|оккупац|диктат|репресс|скончал|умер[лт]|катастроф|взрыв|крестов|голод|эпидеми|пандеми|чрезвычайн|санкц|обвинен|осуд|приговор|тюрьм|концлагер|холокост|антисемит|расизм|дискримин|порабо|рабств|пытк|фсб|кгб|нквд|цру|разведк|шпион|спецслужб|заговор|конспиролог|сбил|крушени|роспуск|распущ|импичмент|отставк|германи|наводнени|землетрясен|смертельн|отравлен|алкогол|спиртн|суррогат|наркот|самоубийств|погром|неконституц|разгром|сражени|битв|штурм|осад|авари|чернобыл|избиени|побоищ|аннекс|незаконн|удар|беспилотник|дрон|перехват|свержен|диссидент|преследован|ракет|обстрел|фронт|мобилизац/i;
+
+// A more interesting/relevant event beats a generic one — prefer anything
+// tied to Lipetsk itself (rare, but worth the highest priority when it
+// happens), then anything about Russia/USSR more broadly, before falling
+// back to whatever else is safe so the day still gets its 2 facts.
+const LIPETSK_RE = /липецк/i;
+const RUSSIA_RE = /росси|ссср|рсфср|русск|российск|москв|кремл|петербург|ленинград/i;
+
+function relevanceScore(text) {
+  if (LIPETSK_RE.test(text)) return 2;
+  if (RUSSIA_RE.test(text)) return 1;
+  return 0;
+}
 
 async function fetchWikipediaEvents(date) {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -166,8 +179,10 @@ async function getWikipediaHistory(date, count) {
     const events = await fetchWikipediaEvents(date);
     return events
       .filter((e) => e?.text && e.year && !SENSITIVE_RE.test(e.text))
+      .map((e, i) => ({ e, i, score: relevanceScore(e.text) }))
+      .sort((a, b) => b.score - a.score || a.i - b.i) // stable: keep API order within the same score
       .slice(0, count)
-      .map((e) => `📖 в ${e.year} году: ${e.text}`);
+      .map(({ e }) => `📖 в ${e.year} году: ${e.text}`);
   } catch {
     return []; // network hiccup or API change — the greeting just goes without extra facts that day
   }
