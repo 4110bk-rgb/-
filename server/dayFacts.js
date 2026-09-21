@@ -139,11 +139,49 @@ function monthKey(date) {
   return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function getDayFact(date = new Date()) {
+// The curated DAY_HISTORY table above only covers a handful of dates, so it
+// alone can't guarantee "2 interesting facts every day". Wikipedia's "on
+// this day" feed has an entry for every date of the year, filling the gap —
+// but it's raw, unfiltered history, and a lot of it is war/political/tragic
+// (assassinations, invasions, disasters), not the light workplace-appropriate
+// trivia this message is going for. SENSITIVE_RE screens those out; what's
+// left skews toward science, culture, and other neutral "huh, interesting"
+// facts, which is the best a keyword filter can do without reading each one.
+const SENSITIVE_RE =
+  /войн|вторжен|теракт|терро|погиб|жертв|убий|убит|казн|расстрел|резня|геноцид|революц|переворот|восстан|путч|оккупац|диктат|репресс|скончал|катастроф|взрыв|крестов|голод|эпидеми|пандеми|чрезвычайн|санкц|обвинен|осуд|приговор|тюрьм|концлагер|холокост|антисемит|расизм|дискримин|порабо|рабств|пытк|фсб|кгб|нквд|цру|разведк|шпион|спецслужб|заговор|конспиролог/i;
+
+async function fetchWikipediaEvents(date) {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const res = await fetch(`https://ru.wikipedia.org/api/rest_v1/feed/onthisday/events/${mm}/${dd}`, {
+    headers: { 'User-Agent': 'vorota2-bitrix-dashboard/1.0 (internal tool)' },
+  });
+  if (!res.ok) throw new Error(`Wikipedia onthisday HTTP ${res.status}`);
+  const data = await res.json();
+  return data.events || [];
+}
+
+async function getWikipediaHistory(date, count) {
+  try {
+    const events = await fetchWikipediaEvents(date);
+    return events
+      .filter((e) => e?.text && e.year && !SENSITIVE_RE.test(e.text))
+      .slice(0, count)
+      .map((e) => `📖 в ${e.year} году: ${e.text}`);
+  } catch {
+    return []; // network hiccup or API change — the greeting just goes without extra facts that day
+  }
+}
+
+async function getDayFact(date = new Date()) {
   const key = monthKey(date);
   const movable = MOVABLE_HOLIDAYS_BY_YEAR[date.getFullYear()]?.[key] || [];
   const holidays = [...(DAY_FACTS[key] || []), ...movable];
-  const history = DAY_HISTORY[key] || [];
+
+  const curatedHistory = DAY_HISTORY[key] || [];
+  const wikiHistory = curatedHistory.length < 2 ? await getWikipediaHistory(date, 2 - curatedHistory.length) : [];
+  const history = [...curatedHistory, ...wikiHistory];
+
   if (!holidays.length && !history.length) return null;
   return { holidays, history };
 }
