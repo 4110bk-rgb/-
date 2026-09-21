@@ -74,4 +74,31 @@ async function userNames(ids) {
   return map;
 }
 
-module.exports = { call, listAll, userNames };
+async function contactPhones(ids) {
+  if (!ids.length) return {};
+  const contacts = await listAll('crm.contact.list', { filter: { ID: ids }, select: ['ID', 'PHONE'] });
+  const map = {};
+  for (const c of contacts) {
+    map[c.ID] = (c.PHONE || []).map((p) => p.VALUE);
+  }
+  return map;
+}
+
+// Phones and display name in one call, since callers that need one usually need both.
+async function contactInfo(ids) {
+  if (!ids.length) return {};
+  const contacts = await listAll('crm.contact.list', {
+    filter: { ID: ids },
+    select: ['ID', 'PHONE', 'NAME', 'LAST_NAME', 'SECOND_NAME'],
+  });
+  const map = {};
+  for (const c of contacts) {
+    map[c.ID] = {
+      phones: (c.PHONE || []).map((p) => p.VALUE),
+      name: [c.LAST_NAME, c.NAME, c.SECOND_NAME].filter(Boolean).join(' ') || null,
+    };
+  }
+  return map;
+}
+
+module.exports = { call, listAll, userNames, contactPhones, contactInfo };

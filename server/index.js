@@ -1,6 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
+const cron = require('node-cron');
 const { getDealsReport, getLeadsReport, getCallsReport, buildManagerEfficiencyReport } = require('./reports');
 const { buildWorkbook } = require('./exportXlsx');
 const { getDealAttachments } = require('./dealAttachments');
@@ -8,6 +9,20 @@ const { sendDealToMax } = require('./sendDealToMax');
 const { sendLeadsReportToMax } = require('./sendLeadsReportToMax');
 const { sendEfficiencyReportToMax } = require('./sendEfficiencyReportToMax');
 const { sendEfficiencyPdfToMax } = require('./sendEfficiencyPdfToMax');
+const { getOverdueMeasurements } = require('./overdueMeasurements');
+const { sendOverdueMeasurementsToMax } = require('./sendOverdueMeasurementsToMax');
+const { getActiveMeasurements } = require('./activeMeasurements');
+const { sendActiveMeasurementsToMax } = require('./sendActiveMeasurementsToMax');
+const { getActiveRepairs } = require('./activeRepairs');
+const { sendActiveRepairsToMax } = require('./sendActiveRepairsToMax');
+const { sendDailyDigest } = require('./dailyDigest');
+const { sendMorningGreetingToChats } = require('./sendMorningGreetingToChats');
+const { sendHolidayGreetingToChats } = require('./sendHolidayGreetingToChats');
+const { getNearbyDealGroupsByRadius } = require('./nearbyDeals');
+const { sendNearbyDealsToMax } = require('./sendNearbyDealsToMax');
+const { sendMeasurementCompletedToMax } = require('./sendMeasurementCompletedToMax');
+const { sendNewDealsToMax } = require('./sendNewDealsToMax');
+const { sendActiveDealsDigestToChats } = require('./sendActiveDealsDigestToChats');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -118,6 +133,230 @@ app.post('/api/efficiency-report/send-pdf-to-max', async (req, res) => {
     const chatId = Number(req.body.chatId);
     const days = Number(req.body.days) || REPORT_DAYS;
     const message = await sendEfficiencyPdfToMax({ chatId, days });
+    res.json({ ok: true, data: message });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/api/overdue-measurements', async (req, res) => {
+  try {
+    const data = await getOverdueMeasurements();
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/overdue-measurements/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const message = await sendOverdueMeasurementsToMax({ chatId });
+    res.json({ ok: true, data: message });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/api/active-measurements', async (req, res) => {
+  try {
+    const data = await getActiveMeasurements();
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/active-measurements/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const message = await sendActiveMeasurementsToMax({ chatId });
+    res.json({ ok: true, data: message });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get('/api/active-repairs', async (req, res) => {
+  try {
+    const data = await getActiveRepairs();
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/active-repairs/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const message = await sendActiveRepairsToMax({ chatId });
+    res.json({ ok: true, data: message });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/daily-digest/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const result = await sendDailyDigest({ chatId });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/morning-greeting/send-to-max', async (req, res) => {
+  try {
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : greetingChatIds;
+    const result = await sendMorningGreetingToChats({ chatIds });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/active-deals-digest/send-to-max', async (req, res) => {
+  try {
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : workChatIds;
+    const result = await sendActiveDealsDigestToChats({ chatIds });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/measurement-completed/send-to-max', async (req, res) => {
+  try {
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : workChatIds;
+    const result = await sendMeasurementCompletedToMax({ chatIds });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/new-deals/send-to-max', async (req, res) => {
+  try {
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : workChatIds;
+    const result = await sendNewDealsToMax({ chatIds });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/holiday-greeting/send-to-max', async (req, res) => {
+  try {
+    const chatIds = Array.isArray(req.body.chatIds) ? req.body.chatIds.map(Number) : holidayChatIds;
+    const result = await sendHolidayGreetingToChats({ chatIds });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Daily 08:30 (Moscow time) digest — active measurements + repairs — to the
+// MAX chat in MAX_CHAT_ID, weekdays only, skipped on Russian holidays.
+const dailyDigestChatId = Number(process.env.MAX_CHAT_ID);
+if (dailyDigestChatId) {
+  cron.schedule(
+    '30 8 * * 1-5',
+    () => {
+      sendDailyDigest({ chatId: dailyDigestChatId }).catch((err) => console.error('dailyDigest failed:', err));
+    },
+    { timezone: 'Europe/Moscow' },
+  );
+} else {
+  console.warn('MAX_CHAT_ID is not set — the daily 08:30 digest is disabled.');
+}
+
+// Daily 08:00 (Moscow time) morning greeting only — weather + day fact —
+// to every chat in MAX_GREETING_CHAT_IDS, same weekday/holiday rule.
+const greetingChatIds = (process.env.MAX_GREETING_CHAT_IDS || '')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter(Boolean);
+if (greetingChatIds.length) {
+  cron.schedule(
+    '0 8 * * 1-5',
+    () => {
+      sendMorningGreetingToChats({ chatIds: greetingChatIds }).catch((err) => console.error('morningGreeting failed:', err));
+    },
+    { timezone: 'Europe/Moscow' },
+  );
+} else {
+  console.warn('MAX_GREETING_CHAT_IDS is not set — the daily 08:00 greeting is disabled.');
+}
+
+// 12:00 and 19:00 (Moscow time) — checks for deals that moved into "Сделали
+// замер/Готовим документы" since the last check, and announces them with an
+// @mention of the responsible manager so a manager knows the замерщик
+// filed the measurement and it's ready to follow up on. Goes to
+// MAX_WORK_CHAT_IDS (the managers+замерщик working chat), not the team
+// chats, since that's where the @mention actually notifies someone. Same
+// weekday/holiday rule as the rest of the schedule; sends nothing when
+// there's no new transition.
+const workChatIds = (process.env.MAX_WORK_CHAT_IDS || '')
+  .split(',')
+  .map((s) => Number(s.trim()))
+  .filter(Boolean);
+
+// 08:00 (Moscow time) — active measurements + repairs (no greeting, that
+// already goes to MAX_GREETING_CHAT_IDS) to the same working chat, so
+// managers and the замерщик start the day with the full picture too.
+if (workChatIds.length) {
+  cron.schedule(
+    '0 8 * * 1-5',
+    () => {
+      sendActiveDealsDigestToChats({ chatIds: workChatIds }).catch((err) => console.error('activeDealsDigest failed:', err));
+    },
+    { timezone: 'Europe/Moscow' },
+  );
+}
+
+if (workChatIds.length) {
+  cron.schedule(
+    '0 12,19 * * 1-5',
+    () => {
+      sendMeasurementCompletedToMax({ chatIds: workChatIds }).catch((err) => console.error('measurementCompleted failed:', err));
+      sendNewDealsToMax({ chatIds: workChatIds }).catch((err) => console.error('newDeals failed:', err));
+    },
+    { timezone: 'Europe/Moscow' },
+  );
+} else {
+  console.warn('MAX_WORK_CHAT_IDS is not set — the 12:00/19:00 measurement/repair alerts are disabled.');
+}
+
+// 10:00 (Moscow time) holiday congratulation — every day, but it only
+// actually sends on a named state holiday (New Year, 8 Марта, etc.), later
+// than the regular 08:00/08:30 messages since nobody's rushing to work.
+// Runs every calendar day (not just weekdays) since a holiday can land on
+// any day of the week.
+const holidayChatIds = [...new Set([...greetingChatIds, dailyDigestChatId].filter(Boolean))];
+if (holidayChatIds.length) {
+  cron.schedule(
+    '0 10 * * *',
+    () => {
+      sendHolidayGreetingToChats({ chatIds: holidayChatIds }).catch((err) => console.error('holidayGreeting failed:', err));
+    },
+    { timezone: 'Europe/Moscow' },
+  );
+}
+
+app.get('/api/nearby-deals', async (req, res) => {
+  try {
+    const data = await getNearbyDealGroupsByRadius();
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/nearby-deals/send-to-max', async (req, res) => {
+  try {
+    const chatId = Number(req.body.chatId);
+    const message = await sendNearbyDealsToMax({ chatId });
     res.json({ ok: true, data: message });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
