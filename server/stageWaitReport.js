@@ -1,5 +1,5 @@
 const { listAll, call, userNames, contactInfo } = require('./bitrixClient');
-const { extractMeasurementDate, stripFormatting } = require('./overdueMeasurements');
+const { extractMeasurementDateInfo, formatRangeRu, stripFormatting } = require('./overdueMeasurements');
 
 const CATEGORY_ID = 5; // "Монтажная" funnel
 const URGENT_THRESHOLD_DAYS = 3;
@@ -101,16 +101,26 @@ async function getStageWaitReport(stageId, referenceDate = new Date()) {
     const enteredDay = enteredAt && new Date(enteredAt.getFullYear(), enteredAt.getMonth(), enteredAt.getDate());
     const waitingDays = enteredDay ? businessDaysSince(enteredDay, today) : null;
 
-    const mentionedDate = extractMeasurementDate(deal.COMMENTS, referenceDate);
+    const dateInfo = extractMeasurementDateInfo(deal.COMMENTS, referenceDate);
     let dateStatus = 'none';
+    let mentionedDate = null;
     let daysOverdue = null;
-    if (mentionedDate) {
-      if (mentionedDate.getTime() === today.getTime()) dateStatus = 'today';
-      else if (mentionedDate < today) {
+    if (dateInfo?.type === 'exact') {
+      mentionedDate = dateInfo.date.toISOString().slice(0, 10);
+      if (dateInfo.date.getTime() === today.getTime()) dateStatus = 'today';
+      else if (dateInfo.date < today) {
         dateStatus = 'overdue';
-        daysOverdue = Math.round((today - mentionedDate) / 86400000);
+        daysOverdue = Math.round((today - dateInfo.date) / 86400000);
       } else {
         dateStatus = 'scheduled';
+      }
+    } else if (dateInfo?.type === 'range') {
+      mentionedDate = formatRangeRu(dateInfo.start, dateInfo.end);
+      if (dateInfo.end < today) {
+        dateStatus = 'range_overdue';
+        daysOverdue = Math.round((today - dateInfo.end) / 86400000);
+      } else {
+        dateStatus = 'range';
       }
     }
 
@@ -122,7 +132,7 @@ async function getStageWaitReport(stageId, referenceDate = new Date()) {
       url: dealUrl(deal.ID),
       manager: managerNames[deal.ASSIGNED_BY_ID] || deal.ASSIGNED_BY_ID,
       waitingDays,
-      mentionedDate: mentionedDate ? mentionedDate.toISOString().slice(0, 10) : null,
+      mentionedDate,
       dateStatus,
       daysOverdue,
       urgent,

@@ -19,17 +19,21 @@ function normalizePhone(raw) {
   return `+7 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 9)}-${digits.slice(9, 11)}`;
 }
 
-// 🟢 just started waiting, 🟡 getting stale, 🔴 waiting too long — all in business days.
-function waitStatusEmoji(waitingDays) {
-  if (waitingDays === null) return '';
-  if (waitingDays > 5) return '🔴 ';
-  if (waitingDays >= 3) return '🟡 ';
+// 🟢 just started waiting, 🟡 getting stale, 🔴 waiting too long, all in business
+// days — except an overdue date/range always wins as 🔴, and a still-open
+// date range (not yet overdue) is called out as 🔘 regardless of wait time.
+function waitStatusEmoji(d) {
+  if (d.dateStatus === 'overdue' || d.dateStatus === 'range_overdue') return '🔴 ';
+  if (d.dateStatus === 'range') return '🔘 ';
+  if (d.waitingDays === null) return '';
+  if (d.waitingDays > 5) return '🔴 ';
+  if (d.waitingDays >= 3) return '🟡 ';
   return '🟢 ';
 }
 
 function formatDeal(d) {
   const mark = d.urgent ? '! ' : '';
-  const lines = [`${waitStatusEmoji(d.waitingDays)}${mark}«${d.title}»`];
+  const lines = [`${waitStatusEmoji(d)}${mark}«${d.title}»`];
 
   if (d.address) {
     const note = d.address.fromComment ? ' (из комментария)' : '';
@@ -51,10 +55,16 @@ function formatDeal(d) {
     lines.push(`  Договорились на сегодня (${d.mentionedDate})`);
   } else if (d.dateStatus === 'overdue') {
     lines.push(
-      `  ⚠️ Договаривались на ${d.mentionedDate}, просрочено на ${formatDaysRu(d.daysOverdue, 'день', 'дня', 'дней')} — нужно передоговориться с клиентом`,
+      `  ❗️ Договаривались на ${d.mentionedDate}, просрочено на ${formatDaysRu(d.daysOverdue, 'день', 'дня', 'дней')} — нужно передоговориться с клиентом!`,
     );
   } else if (d.dateStatus === 'scheduled') {
     lines.push(`  Запланировано на ${d.mentionedDate}`);
+  } else if (d.dateStatus === 'range') {
+    lines.push(`  Планируется: ${d.mentionedDate}`);
+  } else if (d.dateStatus === 'range_overdue') {
+    lines.push(
+      `  ❗️ Диапазон был ${d.mentionedDate}, крайняя дата просрочена на ${formatDaysRu(d.daysOverdue, 'день', 'дня', 'дней')} — нужно передоговориться с клиентом!`,
+    );
   }
 
   return lines.join('\n');
