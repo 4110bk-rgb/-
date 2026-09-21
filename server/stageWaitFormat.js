@@ -43,7 +43,7 @@ function formatDeal(d) {
 
   if (d.address) {
     const note = d.address.fromComment ? ' (из комментария)' : '';
-    lines.push(`  Адрес: [${d.address.text}](${d.address.mapUrl})${note}`);
+    lines.push(`  Адрес: [Карта](${d.address.mapUrl})${note}`);
   }
 
   if (d.dateStatus === 'today') {
