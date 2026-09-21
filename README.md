@@ -53,3 +53,38 @@ Bitrix24 REST API не поддерживает push-уведомления че
 | `BITRIX_WEBHOOK_URL` | Базовый URL входящего вебхука Bitrix24 |
 | `REPORT_DAYS` | За сколько последних дней собирать данные (по умолчанию 30) |
 | `PORT` | Порт HTTP-сервера (по умолчанию 3000) |
+
+## Деплой на сервер (Ubuntu/Debian)
+
+В репозитории есть `deploy.sh` — ставит Node.js, клонирует репозиторий,
+устанавливает зависимости и запускает приложение как systemd-сервис.
+
+На сервере (под root):
+
+```bash
+curl -fsSL -o deploy.sh https://raw.githubusercontent.com/4110bk-rgb/-/<branch>/deploy.sh
+chmod +x deploy.sh
+GIT_REPO_URL="https://<TOKEN>@github.com/4110bk-rgb/-.git" ./deploy.sh
+```
+
+Репозиторий приватный, поэтому нужен `GIT_REPO_URL` с токеном (GitHub
+Personal Access Token с доступом read к репозиторию) либо SSH-URL с
+настроенным deploy key.
+
+После первого запуска скрипт создаст `.env` из `.env.example` — отредактируйте
+`/opt/bitrix24-reports-dashboard/.env` (впишите `BITRIX_WEBHOOK_URL` и другие
+токены) и перезапустите сервис:
+
+```bash
+systemctl restart bitrix24-dashboard
+```
+
+Полезные команды:
+
+```bash
+systemctl status bitrix24-dashboard   # статус
+journalctl -u bitrix24-dashboard -f   # логи
+```
+
+Приложение слушает порт из `PORT` (по умолчанию 3000) без reverse proxy —
+дашборд будет доступен по `http://<IP_СЕРВЕРА>:3000`.
