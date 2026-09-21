@@ -48,7 +48,7 @@ async function buildMorningGreeting(date = new Date()) {
 
   parts.push(pickRotating(CLOSINGS, date));
 
-  return parts.join('\n\n');
+  return `${parts.join('\n\n')}\n\n\n`;
 }
 
 module.exports = { buildMorningGreeting };
