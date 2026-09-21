@@ -148,18 +148,23 @@ function monthKey(date) {
 // left skews toward science, culture, and other neutral "huh, interesting"
 // facts, which is the best a keyword filter can do without reading each one.
 const SENSITIVE_RE =
-  /войн|воен|вторжен|теракт|терро|погиб|жертв|убий|убит|казн|расстрел|резня|геноцид|революц|переворот|восстан|путч|оккупац|диктат|репресс|скончал|умер[лт]|катастроф|взрыв|крестов|голод|эпидеми|пандеми|чрезвычайн|санкц|обвинен|осуд|приговор|тюрьм|концлагер|холокост|антисемит|расизм|дискримин|порабо|рабств|пытк|фсб|кгб|нквд|цру|разведк|шпион|спецслужб|заговор|конспиролог|сбил|крушени|роспуск|распущ|импичмент|отставк|германи|наводнени|землетрясен|смертельн|отравлен|алкогол|спиртн|суррогат|наркот|самоубийств|погром|неконституц|разгром|сражени|битв|штурм|осад|авари|чернобыл|избиени|побоищ|аннекс|незаконн|удар|беспилотник|дрон|перехват|свержен|диссидент|преследован|ракет|обстрел|фронт|мобилизац/i;
+  /войн|воен|вторжен|теракт|терро|погиб|жертв|убий|убит|казн|расстрел|резня|геноцид|революц|переворот|восстан|путч|оккупац|диктат|репресс|скончал|умер[лт]|катастроф|взрыв|крестов|голод|эпидеми|пандеми|чрезвычайн|санкц|обвинен|осуд|приговор|тюрьм|концлагер|холокост|антисемит|расизм|дискримин|порабо|рабств|пытк|фсб|кгб|нквд|цру|разведк|шпион|спецслужб|заговор|конспиролог|сбил|крушени|роспуск|распущ|импичмент|отставк|германи|наводнени|землетрясен|смертельн|отравлен|алкогол|спиртн|суррогат|наркот|самоубийств|погром|неконституц|разгром|сражени|битв|штурм|осад|авари|чернобыл|избиени|побоищ|аннекс|незаконн|удар|беспилотник|дрон|перехват|свержен|диссидент|преследован|обстрел|фронт|мобилизац/i;
 
-// A more interesting/relevant event beats a generic one — prefer anything
-// tied to Lipetsk itself (rare, but worth the highest priority when it
-// happens), then anything about Russia/USSR more broadly, before falling
-// back to whatever else is safe so the day still gets its 2 facts.
+// A "proud" event beats a merely relevant one, which beats a generic one —
+// rank by: Lipetsk + achievement > Lipetsk > Russia/USSR + achievement >
+// Russia/USSR > anything else safe. The last tier only exists so the day
+// still gets its 2 facts when nothing more relevant/proud turns up.
 const LIPETSK_RE = /липецк/i;
-const RUSSIA_RE = /росси|ссср|рсфср|русск|российск|москв|кремл|петербург|ленинград/i;
+const RUSSIA_RE = /росси|ссср|рсфср|(?<![пП])русск|российск|москв|кремл|петербург|ленинград/i;
+const PRIDE_RE =
+  /побед|чемпион|олимпи|рекорд|перв(ый|ое|ые|ой|ым) в (мире|истории)|космос|космонавт|спутник|запуск|полёт|открыт|основан|изобрет|нобелевск|награжд|орден|медал|выигра|достижени|премия|выдающ|музей|театр|балет|учреди/i;
 
 function relevanceScore(text) {
-  if (LIPETSK_RE.test(text)) return 2;
-  if (RUSSIA_RE.test(text)) return 1;
+  const lipetsk = LIPETSK_RE.test(text);
+  const russia = RUSSIA_RE.test(text);
+  const pride = PRIDE_RE.test(text);
+  if (lipetsk) return pride ? 4 : 3;
+  if (russia) return pride ? 2 : 1;
   return 0;
 }
 
