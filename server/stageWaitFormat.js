@@ -84,4 +84,4 @@ function chunkStageWaitReport(items, { listLabel, waitLabel, emptyText }, limit 
   return chunks;
 }
 
-module.exports = { formatStageWaitReport, chunkStageWaitReport, formatDaysRu };
+module.exports = { formatStageWaitReport, chunkStageWaitReport, formatDeal, formatDaysRu };

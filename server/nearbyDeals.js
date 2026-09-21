@@ -68,9 +68,14 @@ function clusterByRadius(points, radiusKm) {
       }
       return {
         maxSpreadKm: Math.round(maxSpreadKm * 10) / 10,
-        deals: deals.map(({ dealId, title, kind, url, manager, address, waitingDays }) => ({
-          dealId, title, kind, url, manager, address, waitingDays,
-        })),
+        // Keep the same fields getActiveMeasurements/getActiveRepairs return
+        // (plus `kind`) so a card here can be rendered with the exact same
+        // formatDeal() used in the "Актуальные замеры/ремонты" report.
+        deals: deals.map(
+          ({ dealId, title, kind, url, manager, address, phones, waitingDays, dateStatus, mentionedDate, daysOverdue, urgent }) => ({
+            dealId, title, kind, url, manager, address, phones, waitingDays, dateStatus, mentionedDate, daysOverdue, urgent,
+          }),
+        ),
       };
     })
     .sort((a, b) => b.deals.length - a.deals.length);

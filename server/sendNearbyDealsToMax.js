@@ -1,15 +1,23 @@
 const { bot } = require('./maxClient');
 const { getNearbyDealGroupsByRadius } = require('./nearbyDeals');
+const { formatDeal } = require('./stageWaitFormat');
 
 const KIND_EMOJI = { замер: '📏', ремонт: '🔧' };
+const WAIT_LABEL = { замер: 'Ждёт замера', ремонт: 'Ждёт ремонта' };
+
+// Same card as the "Актуальные замеры/ремонты" report (traffic-light,
+// address, phone, date status), just prefixed with the deal's kind since a
+// group here can mix замеры and ремонты.
+function formatGroupDeal(d) {
+  const block = formatDeal(d, WAIT_LABEL[d.kind] || 'Ждёт');
+  const [firstLine, ...rest] = block.split('\n');
+  return [`${KIND_EMOJI[d.kind] || ''}  ${firstLine}`, ...rest].join('\n');
+}
 
 function formatGroup(group, index) {
   const lines = [`Группа ${index + 1} (в радиусе ~${group.maxSpreadKm} км):`, ''];
   for (const d of group.deals) {
-    lines.push(`${KIND_EMOJI[d.kind] || ''} «${d.title}» — ${d.manager}`);
-    lines.push(`  ${d.address.text}`);
-    lines.push(`  [Карта](${d.address.mapUrl}) · [Сделка](${d.url})`);
-    lines.push('');
+    lines.push(formatGroupDeal(d), '');
   }
   return lines.join('\n').trim();
 }
