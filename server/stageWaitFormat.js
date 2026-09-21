@@ -1,5 +1,3 @@
-const { mentionManager } = require('./managerMaxIds');
-
 function formatDaysRu(n, one, few, many) {
   const mod10 = n % 10;
   const mod100 = n % 100;
@@ -16,20 +14,23 @@ function waitStatusEmoji(waitingDays) {
   return '🟢 ';
 }
 
-function formatDeal(d, waitLabel) {
+function formatDeal(d) {
   const mark = d.urgent ? '! ' : '';
-  const lines = [`${waitStatusEmoji(d.waitingDays)}${mark}«${d.title}» — ${d.url}`, `  Менеджер: ${mentionManager(d.manager)}`];
+  const lines = [`${waitStatusEmoji(d.waitingDays)}${mark}«${d.title}»`];
 
   if (d.waitingDays !== null) {
-    lines.push(`  ${waitLabel}: ${formatDaysRu(d.waitingDays, 'рабочий день', 'рабочих дня', 'рабочих дней')}`);
+    lines.push(`  Ждёт: ${formatDaysRu(d.waitingDays, 'рабочий день', 'рабочих дня', 'рабочих дней')}`);
+  }
+
+  lines.push(`  [Сделка](${d.url})`);
+
+  if (d.phones.length) {
+    lines.push(`  Телефон: ${d.phones.map((p) => `[${p}](tel:${p.replace(/[^\d+]/g, '')})`).join(', ')}`);
   }
 
   if (d.address) {
     const note = d.address.fromComment ? ' (из комментария)' : '';
     lines.push(`  Адрес: [${d.address.text}](${d.address.mapUrl})${note}`);
-  }
-  if (d.phones.length) {
-    lines.push(`  Телефон: ${d.phones.map((p) => `[${p}](tel:${p.replace(/[^\d+]/g, '')})`).join(', ')}`);
   }
 
   if (d.dateStatus === 'today') {
@@ -46,14 +47,13 @@ function formatDeal(d, waitLabel) {
 }
 
 // listLabel: "Актуальные замеры" / "Актуальные ремонты"
-// waitLabel: "Ждёт замера" / "Ждёт ремонта"
 // emptyText: shown when the stage has no deals
-function formatStageWaitReport(items, { listLabel, waitLabel, emptyText }) {
+function formatStageWaitReport(items, { listLabel, emptyText }) {
   if (!items.length) return emptyText;
 
   const lines = [`${listLabel} (${items.length}):`, ''];
   for (const d of items) {
-    lines.push(formatDeal(d, waitLabel), '');
+    lines.push(formatDeal(d), '');
   }
   return lines.join('\n').trim();
 }
@@ -62,7 +62,7 @@ function formatStageWaitReport(items, { listLabel, waitLabel, emptyText }) {
 // that each stay under MAX's per-message length limit (4000 chars) — the
 // address/phone lines make a single deal block noticeably longer than the
 // list used to be, so one long report can now tip over that limit.
-function chunkStageWaitReport(items, { listLabel, waitLabel, emptyText }, limit = 3500) {
+function chunkStageWaitReport(items, { listLabel, emptyText }, limit = 3500) {
   if (!items.length) return [emptyText];
 
   const header = `${listLabel} (${items.length}):`;
@@ -71,7 +71,7 @@ function chunkStageWaitReport(items, { listLabel, waitLabel, emptyText }, limit 
   let currentLen = header.length;
 
   for (const d of items) {
-    const block = formatDeal(d, waitLabel);
+    const block = formatDeal(d);
     if (currentLen + block.length > limit && current.length > 2) {
       chunks.push(current.join('\n').trim());
       current = [`${header} — продолжение`, ''];
