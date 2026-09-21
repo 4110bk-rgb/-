@@ -1,4 +1,4 @@
-const { listAll, call, userNames, contactPhones } = require('./bitrixClient');
+const { listAll, call, userNames, contactInfo } = require('./bitrixClient');
 const { extractMeasurementDate, stripFormatting } = require('./overdueMeasurements');
 
 const CATEGORY_ID = 5; // "Монтажная" funnel
@@ -92,7 +92,7 @@ async function getStageWaitReport(stageId, referenceDate = new Date()) {
 
   const managerIds = [...new Set(deals.map((d) => d.ASSIGNED_BY_ID))];
   const contactIds = [...new Set(deals.map((d) => d.CONTACT_ID).filter(Boolean))];
-  const [managerNames, phonesByContact] = await Promise.all([userNames(managerIds), contactPhones(contactIds)]);
+  const [managerNames, contactById] = await Promise.all([userNames(managerIds), contactInfo(contactIds)]);
   const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
 
   const results = [];
@@ -127,7 +127,8 @@ async function getStageWaitReport(stageId, referenceDate = new Date()) {
       daysOverdue,
       urgent,
       address: parseAddressField(deal[ADDRESS_FIELD]) || extractAddressFromComment(deal.COMMENTS),
-      phones: deal.CONTACT_ID ? phonesByContact[deal.CONTACT_ID] || [] : [],
+      phones: deal.CONTACT_ID ? contactById[deal.CONTACT_ID]?.phones || [] : [],
+      clientName: deal.CONTACT_ID ? contactById[deal.CONTACT_ID]?.name || null : null,
       comment: stripFormatting(deal.COMMENTS),
     });
   }

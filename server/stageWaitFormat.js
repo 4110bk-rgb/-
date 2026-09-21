@@ -43,7 +43,8 @@ function formatDeal(d) {
   }
 
   if (d.phones.length) {
-    lines.push(`  Телефон: ${d.phones.map(normalizePhone).join(', ')}`);
+    const name = d.clientName ? ` — ${d.clientName}` : '';
+    lines.push(`  ${d.phones.map(normalizePhone).join(', ')}${name}`);
   }
 
   if (d.dateStatus === 'today') {
