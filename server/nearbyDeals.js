@@ -23,8 +23,14 @@ function union(parents, a, b) {
   if (rootA !== rootB) parents[rootA] = rootB;
 }
 
-async function getGeolocatedDeals() {
-  const [measurements, repairs] = await Promise.all([getActiveMeasurements(), getActiveRepairs()]);
+// kinds lets a caller cluster just measurements, just repairs, or (default) both.
+async function getGeolocatedDeals(kinds = ['замер', 'ремонт']) {
+  const wantMeasurements = kinds.includes('замер');
+  const wantRepairs = kinds.includes('ремонт');
+  const [measurements, repairs] = await Promise.all([
+    wantMeasurements ? getActiveMeasurements() : [],
+    wantRepairs ? getActiveRepairs() : [],
+  ]);
   return [
     ...measurements.map((d) => ({ ...d, kind: 'замер' })),
     ...repairs.map((d) => ({ ...d, kind: 'ремонт' })),
@@ -71,17 +77,18 @@ function clusterByRadius(points, radiusKm) {
 }
 
 // Groups deals from both the measurements and repairs lists at one radius.
-async function getNearbyDealGroups(radiusKm = RADII_KM[0]) {
-  const points = await getGeolocatedDeals();
+async function getNearbyDealGroups(radiusKm = RADII_KM[0], kinds) {
+  const points = await getGeolocatedDeals(kinds);
   return clusterByRadius(points, radiusKm);
 }
 
 // Same, but at every radius in `radii` at once (default [10, 30]) — a
 // wider radius naturally produces bigger/more groups, so callers usually
 // want to show the tight (10km) groups as "definitely combine" and the
-// wider (30km) ones as "worth considering", not just one cutoff.
-async function getNearbyDealGroupsByRadius(radii = RADII_KM) {
-  const points = await getGeolocatedDeals();
+// wider (30km) ones as "worth considering", not just one cutoff. `kinds`
+// restricts to just measurements, just repairs, or (default) both.
+async function getNearbyDealGroupsByRadius(radii = RADII_KM, kinds) {
+  const points = await getGeolocatedDeals(kinds);
   return radii.map((radiusKm) => ({ radiusKm, groups: clusterByRadius(points, radiusKm) }));
 }
 

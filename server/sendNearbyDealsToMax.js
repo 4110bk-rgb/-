@@ -27,8 +27,10 @@ function formatNearbyDeals(byRadius) {
   return ['Можно объединить поездки:', '', ...sections.map((s) => s + '\n')].join('\n').trim();
 }
 
-async function sendNearbyDealsToMax({ chatId }) {
-  const byRadius = await getNearbyDealGroupsByRadius();
+// kinds restricts the grouping to just measurements (['замер']), just
+// repairs (['ремонт']), or (default, when omitted) both.
+async function sendNearbyDealsToMax({ chatId, kinds }) {
+  const byRadius = await getNearbyDealGroupsByRadius(undefined, kinds);
   const text = formatNearbyDeals(byRadius);
   return bot.api.sendMessageToChat(chatId, text, { format: 'markdown' });
 }
