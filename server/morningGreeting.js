@@ -36,9 +36,10 @@ async function buildMorningGreeting(date = new Date()) {
   }
 
   if (dayFact) {
-    if (dayFact.holidays.length) {
-      const label = dayFact.holidays.length > 1 ? 'Праздники дня' : 'Праздник дня';
-      parts.push(`🎉 ${label}: ${dayFact.holidays.join(', ')}`);
+    if (dayFact.holidays.length === 1) {
+      parts.push(`🎉 Праздник дня: ${dayFact.holidays[0]}`);
+    } else if (dayFact.holidays.length > 1) {
+      parts.push(`🎉 Праздники дня:\n${dayFact.holidays.join('\n')}`);
     }
     if (dayFact.history.length) {
       parts.push(`А ещё в этот день:\n${dayFact.history.join('\n')}`);
