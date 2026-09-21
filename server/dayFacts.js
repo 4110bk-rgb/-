@@ -211,6 +211,21 @@ async function fetchWikipediaHolidays(date) {
 // that look like one of those recognizable, nameable observance days.
 const HOLIDAY_SHAPE_RE = /^(Международный день|Всемирный день|Общероссийский день|Национальный день|ООН\s*—|[А-ЯЁ][а-яё]+\s*—\s*День)/;
 
+// Even among shape-matched entries, formal national/political observances
+// (independence days, constitution days, ministry founding dates) aren't
+// what "поднимает настроение" — a light, fun, or feel-good day is. This
+// screens those out so the country-specific ones that get through (a day
+// named after some odd everyday object, a beauty/charity day, etc.) are the
+// genuinely uplifting kind rather than another flag-and-anthem occasion.
+const FORMAL_HOLIDAY_RE =
+  /независимост|конституц|объединен|образован|вооруж|воинск|гварди|мвд|юстиц|прокурат|правительств|парламент|референдум|день победы|ядерн|атомн|повеш|партизан/i;
+
+// A whimsical global observance ("Международный день X") tends to lift the
+// mood more reliably than a single country's formal professional/civic day
+// ("Украина — День нотариата"), even once the clearly political ones are
+// screened out above — so it's ranked ahead when both are on offer.
+const GLOBAL_HOLIDAY_RE = /^(Международный день|Всемирный день|Общероссийский день|Национальный день|ООН\s*—)/;
+
 // Loose match so a wiki fallback holiday doesn't duplicate a curated one
 // that's the same observance worded slightly differently (with/without a
 // trailing emoji, period, or extra description) — e.g. curated "Международный
@@ -232,8 +247,8 @@ async function getWikipediaHolidays(date, count, exclude) {
     const holidays = await fetchWikipediaHolidays(date);
     return holidays
       .map((h) => h?.text)
-      .filter((t) => t && !SENSITIVE_RE.test(t) && HOLIDAY_SHAPE_RE.test(t) && !isDuplicate(t, exclude))
-      .map((t, i) => ({ t, i, score: relevanceScore(t) }))
+      .filter((t) => t && !SENSITIVE_RE.test(t) && !FORMAL_HOLIDAY_RE.test(t) && HOLIDAY_SHAPE_RE.test(t) && !isDuplicate(t, exclude))
+      .map((t, i) => ({ t, i, score: relevanceScore(t) + (GLOBAL_HOLIDAY_RE.test(t) ? 1 : 0) }))
       .sort((a, b) => b.score - a.score || a.i - b.i)
       .slice(0, count)
       .map(({ t }) => t);
