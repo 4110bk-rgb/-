@@ -178,8 +178,24 @@ function formatWeatherSummary(w) {
     lines.push('(источники расходятся насчёт дождя — точный прогноз неясен)');
   }
 
-  lines.push(`Источники: ${w.sourcesUsed.join(', ')}`);
   return lines.join('\n');
 }
 
-module.exports = { getWeatherSummary, formatWeatherSummary };
+// A single emoji standing in for the day's weather — rain takes priority
+// over temperature, since "will I get wet" matters more than the exact
+// degree. Uses the same rain threshold as formatWeatherSummary's text (not
+// the more trigger-happy w.rainLikely, which flags true if even one of the
+// cross-checked sources mentions rain at all) so the emoji never implies
+// more rain than the message itself reports.
+function getWeatherEmoji(w) {
+  if (!w) return '';
+  const rainy = w.rainTimes.length > 0 || (w.rainChancePercent !== null && w.rainChancePercent >= RAIN_THRESHOLD);
+  if (rainy) return '🌧️';
+  if (w.maxC <= -5) return '🥶';
+  if (w.maxC < 5) return '❄️';
+  if (w.maxC < 15) return '☁️';
+  if (w.maxC < 25) return '⛅';
+  return '☀️';
+}
+
+module.exports = { getWeatherSummary, formatWeatherSummary, getWeatherEmoji };

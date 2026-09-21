@@ -1,4 +1,4 @@
-const { getWeatherSummary, formatWeatherSummary } = require('./weather');
+const { getWeatherSummary, formatWeatherSummary, getWeatherEmoji } = require('./weather');
 const { getDayFact } = require('./dayFacts');
 
 const YANDEX_WEATHER_URL = 'https://yandex.ru/pogoda/lipetsk';
@@ -30,7 +30,10 @@ async function buildMorningGreeting(date = new Date()) {
   const parts = [pickRotating(OPENINGS, date), formatDateLine(date)];
 
   const weatherText = formatWeatherSummary(weather);
-  if (weatherText) parts.push(`${weatherText}\nПодробнее: ${YANDEX_WEATHER_URL}`);
+  if (weatherText) {
+    const emoji = getWeatherEmoji(weather);
+    parts.push(`${emoji ? `${emoji} ` : ''}${weatherText}\nПодробнее: ${YANDEX_WEATHER_URL}`);
+  }
 
   if (dayFact) {
     if (dayFact.holidays.length) {
