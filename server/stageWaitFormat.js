@@ -31,15 +31,15 @@ function formatDeal(d) {
   const mark = d.urgent ? '! ' : '';
   const lines = [`${waitStatusEmoji(d.waitingDays)}${mark}«${d.title}»`];
 
-  if (d.waitingDays !== null) {
-    lines.push(`  Ждёт: ${formatDaysRu(d.waitingDays, 'рабочий день', 'рабочих дня', 'рабочих дней')}`);
-  }
-
   if (d.address) {
     const note = d.address.fromComment ? ' (из комментария)' : '';
     lines.push(`  [Сделка](${d.url}) · [Адрес](${d.address.mapUrl})${note}`);
   } else {
     lines.push(`  [Сделка](${d.url})`);
+  }
+
+  if (d.waitingDays !== null) {
+    lines.push(`  Ждёт: ${formatDaysRu(d.waitingDays, 'рабочий день', 'рабочих дня', 'рабочих дней')}`);
   }
 
   if (d.phones.length) {
